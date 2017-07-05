@@ -15,11 +15,11 @@
 
 #include "loader.h"
 
+#define SHARED_SIZE         64 * 1024   //64KBytes
 typedef struct {
-	uint8_t		gmalloc_lock;
 	uint8_t		barrior_lock;
 	uint32_t	barrior;
-	void*		shared;
+	uint8_t		shared[64 * 1024];
 } SharedBlock;
 
 static bool check_header(void* addr);
@@ -444,7 +444,7 @@ static bool relocate(VM* vm, void* malloc_pool, void* gmalloc_pool, uint32_t tas
 	}
 
 	if(task_addr(task_id, SYM_SHARED)) {
-		*(void***)task_addr(task_id, SYM_SHARED) = &shared_block->shared;
+		*(uint64_t*)task_addr(task_id, SYM_SHARED) = (uint64_t)shared_block->shared;
 	}
 
 	if(task_addr(task_id, SYM_TIMER_FREQUENCY)) {

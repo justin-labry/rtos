@@ -1,3 +1,7 @@
+#include <stdint.h>
+
+uint64_t PHYSICAL_OFFSET;
+
 char* DESC_TABLE_AREA_START;
 char* DESC_TABLE_AREA_END;
 

@@ -108,6 +108,8 @@ int gmalloc_init() {
 				b->end = r->start;
 			} else {						// Body cut
 				Block* b2 = malloc(sizeof(Block));
+				if(!b2)
+					return -1;
 				b2->start = r->end;
 				b2->end = b->end;
 				list_add(blocks, b2);
@@ -180,6 +182,9 @@ int gmalloc_init() {
 	}
 
 	bmalloc_pool = malloc(sizeof(BmallocPool) * bmalloc_count);
+	if(!bmalloc_pool)
+		return -2;
+
 	uint32_t bmalloc_index = 0;
 	Block* block = pop();
 	while(block) {

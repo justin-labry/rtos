@@ -41,6 +41,7 @@
 #include "param.h"
 #include "symbols.h"
 #include "io_mux.h"
+#include "shmem.h"
 
 #include "ver.h"
 
@@ -248,6 +249,8 @@ int main(int argc, char** argv) {
 	if(ver_init()) {
 		printf("Can't initialize Version\n");
 	}
+
+	shmem_init();
 	mp_sync(); // Barrier #3
 
 	while(1) event_loop();

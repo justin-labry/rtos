@@ -7,6 +7,8 @@
 List* e820_get_mem_blocks() {
 	int count = smap_count;
 	List* blocks = list_create(NULL);
+	if(!blocks) return NULL;
+
 	printf("\tSystem memory map\n");
 	for(int i = 0; i < count; i++) {
 		SMAP* entry = &smap[i];
@@ -16,6 +18,8 @@ List* e820_get_mem_blocks() {
 				;
 				type = "Memory";
 				Block* block = malloc(sizeof(Block));
+				if(!block) return NULL;
+
 				block->start = entry->base;
 				block->end = entry->base + entry->length;
 				list_add(blocks, block);

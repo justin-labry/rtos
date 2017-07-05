@@ -9,7 +9,7 @@
 
 #include <stdint.h>
 
-uint64_t PHYSICAL_OFFSET;
+extern uint64_t PHYSICAL_OFFSET;
 
 /*
  * BIOS area (0M ~ 2M)
