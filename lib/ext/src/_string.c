@@ -699,7 +699,7 @@ static int is_space(const char c) {
 long int __strtol(const char *nptr, char **endptr, int base) {
 	int negative = 0;
 
-	while(is_space(*nptr)){
+	while(is_space(*nptr)) {
 		nptr++;
 	}
 	switch(*nptr) {
@@ -728,47 +728,53 @@ long int __strtol(const char *nptr, char **endptr, int base) {
 			}
 	}
 
-	long int value = 0;
+	unsigned long int max = INT32_MAX;
+	if(negative) max ++;
 
+	unsigned long int lim1 = max / base;
+	unsigned long int lim2 = max % base;
+	unsigned long int value = 0;
+
+	char outrange = 0;	
 	char* p = (char*)nptr;
-	while(*p) {
-		switch(base) {
-			case 16:
-				if(*p >= '0' && *p <= '9') {
-					value = value * base + *(p++) - '0';
-					continue;
-				} else if(*p >= 'a' && *p <= 'f') {
-					value = value * base + *(p++) - 'a' + 10;
-					continue;
-				} else if(*p >= 'A' && *p <= 'F') {
-					value = value * base + *(p++) - 'A' + 10;
-					continue;
-				}
-
-			case 10:
-				if(*p >= '0' && *p <= '9') {
-					value = value * base + *(p++) - '0';
-					continue;
-				}
-
-			case 8:
-				if(*p >= '0' && *p <= '7') {
-					value = value * base + *(p++) - '0';
-					continue;
-				}
+	char num;
+	
+	while(1) {
+		num = *p;
+		if(num >= '0' && num <= '9') {
+			num -= '0';
+		} else if(num >= 'a' && num <= 'z') {
+			num = num - 'a' + 10;
+		} else if(num >= 'A' && num <= 'Z') {
+			num = num - 'A' + 10;
+		} else {
+			break;
 		}
-		if(endptr) *endptr = p;
+		if(num >= base) {
+			break;
+		}
 
-		break;
+		p++;
+
+		if(value < lim1 || (value == lim1 && num <= lim2)) {
+			value = value * base + num;
+		} else {
+			outrange = 1;
+		}	
 	}
-	if(negative) return -value;
-	else return value;
+	if(endptr) *endptr = p;
+
+	if(outrange) {
+		errno = ERANGE;
+		return negative? INT32_MIN : INT32_MAX;
+	}
+	return negative? (- value) : value;
 }
 
 long long int __strtoll(const char *nptr, char **endptr, int base) {
 	int negative = 0;
 
-	while(is_space(*nptr)){
+	while(is_space(*nptr)) {
 		nptr++;
 	}
 	switch(*nptr) {
@@ -797,39 +803,177 @@ long long int __strtoll(const char *nptr, char **endptr, int base) {
 			}
 	}
 
-	long long int value = 0;
+	unsigned long long int max = INT64_MAX;
+	if(negative) max++;
 
+	unsigned long long int lim1 = max / base;
+	unsigned long long int lim2 = max % base;
+	unsigned long long int value = 0;
+	
+	char outrange = 0;	
 	char* p = (char*)nptr;
-	while(*p) {
-		switch(base) {
-			case 16:
-				if(*p >= '0' && *p <= '9') {
-					value = value * base + *(p++) - '0';
-					continue;
-				} else if(*p >= 'a' && *p <= 'f') {
-					value = value * base + *(p++) - 'a' + 10;
-					continue;
-				} else if(*p >= 'A' && *p <= 'F') {
-					value = value * base + *(p++) - 'A' + 10;
-					continue;
-				}
-
-			case 10:
-				if(*p >= '0' && *p <= '9') {
-					value = value * base + *(p++) - '0';
-					continue;
-				}
-
-			case 8:
-				if(*p >= '0' && *p <= '7') {
-					value = value * base + *(p++) - '0';
-					continue;
-				}
+	char num;
+	
+	while(1) {
+		num = *p;
+		if(num >= '0' && num <= '9') {
+			num -= '0';
+		} else if(num >= 'a' && num <= 'z') {
+			num = num - 'a' + 10;
+		} else if(num >= 'A' && num <= 'Z') {
+			num = num - 'A' + 10;
+		} else {
+			break;
 		}
-		if(endptr) *endptr = p;
+		if(num >= base) {
+			break;
+		}
 
-		break;
+		p++;
+
+		if(value < lim1 || (value == lim1 && num <= lim2)) {
+			value = value * base + num;
+		} else {
+			outrange = 1;
+		}	
 	}
-	if(negative) return -value;
-	else return value;
+	if(endptr) *endptr = p;
+
+	if(outrange) {
+		errno = ERANGE;
+		return negative? INT64_MIN : INT64_MAX;
+	}
+	return negative? (- value) : value;
+}
+
+unsigned long int __strtoul(const char *nptr, char **endptr, int base) {
+	while(is_space(*nptr)) {
+		nptr++;
+	}
+	if(*nptr == '+' ) nptr++;
+
+	switch(base) {
+		case 0:
+			if(nptr[0] == '0') {
+				if((nptr[1] == 'x' || nptr[1] == 'X')) {
+					base = 16;
+					nptr += 2;
+				} else {
+					base = 8;
+					nptr += 1;
+				}
+			} else {
+				base = 10;
+			}
+		case 16:
+			if(nptr[0] == '0' && (nptr[1] == 'x' || nptr[1] == 'X')) {
+				nptr += 2;
+			}
+	}
+
+	unsigned long int max = UINT32_MAX;
+	unsigned long int lim1 = max / base;
+	unsigned long int lim2 = max % base;
+	unsigned long int value = 0;
+
+	char outrange = 0;	
+	char* p = (char*)nptr;
+	char num;
+	
+	while(1) {
+		num = *p;
+		if(num >= '0' && num <= '9') {
+			num -= '0';
+		} else if(num >= 'a' && num <= 'z') {
+			num = num - 'a' + 10;
+		} else if(num >= 'A' && num <= 'Z') {
+			num = num - 'A' + 10;
+		} else {
+			break;
+		}
+		if(num >= base) {
+			break;
+		}
+
+		p++;
+
+		if(value < lim1 || (value == lim1 && num <= lim2)) {
+			value = value * base + num;
+		} else {
+			outrange = 1;
+		}	
+	}
+	if(endptr) *endptr = p;
+
+	if(outrange) {
+		errno = ERANGE;
+		return UINT32_MAX;
+	}
+	return value;
+}
+
+unsigned long long int __strtoull(const char *nptr, char **endptr, int base) {
+	while(is_space(*nptr)) {
+		nptr++;
+	}
+	if(*nptr == '+' ) nptr++;
+
+	switch(base) {
+		case 0:
+			if(nptr[0] == '0') {
+				if((nptr[1] == 'x' || nptr[1] == 'X')) {
+					base = 16;
+					nptr += 2;
+				} else {
+					base = 8;
+					nptr += 1;
+				}
+			} else {
+				base = 10;
+			}
+		case 16:
+			if(nptr[0] == '0' && (nptr[1] == 'x' || nptr[1] == 'X')) {
+				nptr += 2;
+			}
+	}
+
+	unsigned long long int max = UINT64_MAX;
+	unsigned long long int lim1 = max / base;
+	unsigned long long int lim2 = max % base;
+	unsigned long long int value = 0;
+	
+	char outrange = 0;	
+	char* p = (char*)nptr;
+	char num;
+	
+	while(1) {
+		num = *p;
+		if(num >= '0' && num <= '9') {
+			num -= '0';
+		} else if(num >= 'a' && num <= 'z') {
+			num = num - 'a' + 10;
+		} else if(num >= 'A' && num <= 'Z') {
+			num = num - 'A' + 10;
+		} else {
+			break;
+		}
+		if(num >= base) {
+			break;
+		}
+
+		p++;
+
+		if(value < lim1 || (value == lim1 && num <= lim2)) {
+			value = value * base + num;
+		} else {
+			outrange = 1;
+		}	
+	}
+	if(endptr) *endptr = p;
+
+	if(outrange) {
+		errno = ERANGE;
+		return UINT64_MAX;
+	}
+	return value;
 }
