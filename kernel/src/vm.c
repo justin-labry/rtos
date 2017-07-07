@@ -1105,14 +1105,15 @@ void vm_stdio_handler(VM_STDIO_CALLBACK callback) {
 
 
 static int cmd_md5(int argc, char** argv, void(*callback)(char* result, int exit_status)) {
-	if(argc < 2)
-		return CMD_STATUS_WRONG_NUMBER;
-	if(!is_uint32(argv[1]))
-		return -1;
-	if(argc == 3 && !is_uint64(argv[2]))
-		return -2;
+	if(argc < 2) return CMD_STATUS_WRONG_NUMBER;
+
+	if(!is_uint32(argv[1])) return -1;
 
 	uint32_t vmid = parse_uint32(argv[1]);
+	if(!vm_get(vmid)) return -1;
+
+	if(argc == 3 && !is_uint64(argv[2])) return -2;
+
 	uint64_t size = argc == 3 ? parse_uint64(argv[2]) : vm_get(vmid)->used_size;
 	uint32_t md5sum[4];
 
@@ -1129,8 +1130,7 @@ static int cmd_md5(int argc, char** argv, void(*callback)(char* result, int exit
 	}
 	printf("%s\n", cmd_result);
 
-	if(ret)
-		callback(cmd_result, 0);
+	if(ret) callback(cmd_result, 0);
 
 	return 0;
 }
