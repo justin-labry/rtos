@@ -1,12 +1,12 @@
 .PHONY: run all clean
 
-CFLAGS = -I ../../../lib/include  -I../../../lib/pncp/include -O2 -g -Wall -Werror -m64 -std=gnu99
+CFLAGS = -I ../../../lib/include  -I../../../lib/startup/include -O2 -g -Wall -Werror -m64 -std=gnu99
 
 DIR = obj
 
 OBJS = obj/main.o
 
-LIBS = ../../../lib/libpncp.a ../../../lib/libext.a  ../../../lib/libtlsf.a ../../../lib/libhal.a -lrt
+LIBS = ../../../lib/libstartup.a ../../../lib/libext.a  ../../../lib/libtlsf.a ../../../lib/libhal.a -lrt
 
 all: $(OBJS)
 	gcc -o main $^ $(LIBS)

@@ -31,7 +31,10 @@ int main(int argc, char** argv) {
 	extern void* __gmalloc_pool;
 	printf("shared: %p\n", __shared);
 	printf("gmalloc: %p\n", __gmalloc_pool);
-	strcpy((char*)__shared, "Shared Memory Test Application\n");
+
+	char* data = shared_register("data", 128);
+	strcpy(data, "Shared Memory Test Application\n");
+
 	while(1);
 
 	thread_barrior();
