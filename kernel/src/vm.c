@@ -1352,15 +1352,14 @@ static int cmd_vm_list(int argc, char** argv, void(*callback)(char* result, int 
 }
 
 static int cmd_upload(int argc, char** argv, void(*callback)(char* result, int exit_status)) {
-	if(argc < 3) {
-		return CMD_STATUS_WRONG_NUMBER;
-	}
+	if(argc != 3) return CMD_STATUS_WRONG_NUMBER;
 
-	if(!is_uint32(argv[1])) {
-		return -1;
-	}
+	if(!is_uint32(argv[1])) return -1;
 
 	uint32_t vmid = parse_uint32(argv[1]);
+	if(!vm_get(vmid)) return -1;
+
+	if(vm->status != VM_STATUS_STOP) return -1;
 
 	int fd = open(argv[2], O_RDONLY);
 	if(fd < 0) {
