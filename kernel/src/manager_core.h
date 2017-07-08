@@ -7,17 +7,40 @@
 #include <control/rpc.h>
 
 /**
- * Core metadata
+ * @file
+ * Platform dependant RPC server side stubs
+ *   - Open rpc server
+ *   - Close rpc server
+ *   - Accept new rpc client
+ *   - Provide read, write and close implementation to accepted client
+ */
+
+/**
+ * Platform-dependant core metadata
  */
 typedef struct _ManagerCore {
-	uint16_t	port; ///< tcp port
-	void*		data; ///< `fd` on linux stack, `pcb` on lwip stack
+	/**
+	 * Transport layer port
+	 */
+	uint16_t	port;
+
+	/**
+	 * Private data
+	 *   - Single Kernel with lwip stack: `struct pcb` object. @see lwip/tcp.h
+	 *   - Multi Kernel with linux stack: `Connection` object. @see tools/pn/src/manager_core.c
+	 */
+	void*		data;
+
+	/**
+	 * List of connected clients
+	 */
 	List*		clients;
 } ManagerCore;
 
 /**
  * Initialize manager core
  *
+ * @param accept Set of the handler function to be applied when a new client rpc is created
  * @return zero for success, nonzero for failure
  */
 int manager_core_init(int (*accept)(RPC* rpc));

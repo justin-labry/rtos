@@ -175,7 +175,7 @@ static void storage_md5_handler(RPC* rpc, uint32_t id, uint64_t size, void* cont
 	callback(rpc, ret, md5sum);
 }
 
-static int manager_accept(RPC* rpc) {
+static int assign_default_handlers(RPC* rpc) {
 	rpc_vm_create_handler(rpc, vm_create_handler, NULL);
 	rpc_vm_get_handler(rpc, vm_get_handler, NULL);
 	rpc_vm_set_handler(rpc, vm_set_handler, NULL);
@@ -267,10 +267,8 @@ static Command commands[] = {
 	}
 };
 
-// Entry Point of Manager
-// it calls each manager_core_init() `manager_core.c` of kernel's and tools/manager's
 int manager_init() {
-	if(manager_core_init(manager_accept)) {
+	if(manager_core_init(assign_default_handlers)) {
 		printf("\tCan't open manager server\n");
 		return -1;
 	}
