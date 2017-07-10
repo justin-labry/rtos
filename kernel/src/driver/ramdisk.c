@@ -2,6 +2,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <util/list.h>
+
 #include "ramdisk.h"
 #include "../file.h"
 
@@ -17,7 +18,7 @@ static bool parse(char* argv, uint64_t* address, size_t* size) {
 		return false;
 
 	char* next;
-	*address = strtol(argv + 6, &next, 0);
+	*address = strtoull(argv + 6, &next, 0);
 	if(next == argv + 6)
 		return false;
 
