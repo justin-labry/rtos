@@ -723,10 +723,12 @@ long int __strtol(const char *nptr, char **endptr, int base) {
 			} else {
 				base = 10;
 			}
+			break;
 		case 16:
 			if(nptr[0] == '0' && (nptr[1] == 'x' || nptr[1] == 'X')) {
 				nptr += 2;
 			}
+			break;
 	}
 
 	unsigned long int max = INT32_MAX;
@@ -761,7 +763,7 @@ long int __strtol(const char *nptr, char **endptr, int base) {
 			value = value * base + num;
 		} else {
 			outrange = 1;
-		}	
+		}
 	}
 	if(endptr) *endptr = p;
 
@@ -798,10 +800,12 @@ long long int __strtoll(const char *nptr, char **endptr, int base) {
 			} else {
 				base = 10;
 			}
+			break;
 		case 16:
 			if(nptr[0] == '0' && (nptr[1] == 'x' || nptr[1] == 'X')) {
 				nptr += 2;
 			}
+			break;
 	}
 
 	unsigned long long int max = INT64_MAX;
@@ -866,10 +870,12 @@ unsigned long int __strtoul(const char *nptr, char **endptr, int base) {
 			} else {
 				base = 10;
 			}
+			break;
 		case 16:
 			if(nptr[0] == '0' && (nptr[1] == 'x' || nptr[1] == 'X')) {
 				nptr += 2;
 			}
+			break;
 	}
 
 	unsigned long int max = UINT32_MAX;
@@ -932,10 +938,12 @@ unsigned long long int __strtoull(const char *nptr, char **endptr, int base) {
 			} else {
 				base = 10;
 			}
+			break;
 		case 16:
 			if(nptr[0] == '0' && (nptr[1] == 'x' || nptr[1] == 'X')) {
 				nptr += 2;
 			}
+			break;
 	}
 
 	unsigned long long int max = UINT64_MAX;
