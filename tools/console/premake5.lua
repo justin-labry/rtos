@@ -6,6 +6,7 @@ project "connect"
     kind "ConsoleApp"
     targetdir "bin"
     targetname "connect"
+    buildoptions { "-std=gnu99"}
     files { "src/rpc.c" }
     files { "src/connect.c" }
 
@@ -17,6 +18,7 @@ project "create"
     kind "ConsoleApp"
     targetdir "bin"
     targetname "create"
+    buildoptions { "-std=gnu99"}
     files { "src/rpc.c" }
     files { "src/create.c" }
 
@@ -28,6 +30,7 @@ project "destroy"
     kind "ConsoleApp"
     targetdir "bin"
     targetname "destroy"
+    buildoptions { "-std=gnu99"}
     files { "src/rpc.c" }
     files { "src/destroy.c" }
 
@@ -39,6 +42,7 @@ project "list"
     kind "ConsoleApp"
     targetdir "bin"
     targetname "list"
+    buildoptions { "-std=gnu99"}
     files { "src/rpc.c" }
     files { "src/list.c" }
 
@@ -50,6 +54,7 @@ project "status"
     kind "ConsoleApp"
     targetdir "bin"
     targetname "status"
+    buildoptions { "-std=gnu99"}
     files { "src/rpc.c" }
     files { "src/status.c" }
 
@@ -61,6 +66,7 @@ project "start"
     kind "ConsoleApp"
     targetdir "bin"
     targetname "start"
+    buildoptions { "-std=gnu99"}
     files { "src/rpc.c" }
     files { "src/start.c" }
 
@@ -79,6 +85,7 @@ project "upload"
     kind "ConsoleApp"
     targetdir "bin"
     targetname "upload"
+    buildoptions { "-std=gnu99"}
     files { "src/rpc.c" }
     files { "src/upload.c" }
 
@@ -90,6 +97,7 @@ project "download"
     kind "ConsoleApp"
     targetdir "bin"
     targetname "download"
+    buildoptions { "-std=gnu99"}
     files { "src/rpc.c" }
     files { "src/download.c" }
 
@@ -101,6 +109,7 @@ project "monitor"
     kind "ConsoleApp"
     targetdir "bin"
     targetname "monitor"
+    buildoptions { "-std=gnu99"}
     files { "src/rpc.c" }
     files { "src/monitor.c" }
 
@@ -112,6 +121,7 @@ project "stdin"
     kind "ConsoleApp"
     targetdir "bin"
     targetname "stdin"
+    buildoptions { "-std=gnu99"}
     files { "src/rpc.c" }
     files { "src/stdin.c" }
 
@@ -123,6 +133,7 @@ project "md5"
     kind "ConsoleApp"
     targetdir "bin"
     targetname "md5"
+    buildoptions { "-std=gnu99"}
     files { "src/rpc.c" }
     files { "src/md5.c" }
 
