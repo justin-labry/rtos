@@ -3,6 +3,7 @@
 #include <malloc.h>
 #include <stdio.h>
 #include <stdbool.h>
+#include <errno.h>
 
 #include <xmmintrin.h>
 #include <smmintrin.h>

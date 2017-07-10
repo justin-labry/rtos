@@ -1,6 +1,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stddef.h>
+#include <errno.h>
+
 #include "util/types.h"
 
 bool is_uint8(const char* val) {
@@ -38,7 +40,6 @@ uint16_t parse_uint16(const char* val) {
 bool is_uint32(const char* val) {
 	char* end = NULL;
 	errno = 0;
-	unsigned long int v = strtoul(val, &end, 0);
 
 	if(end == NULL || *end != '\0') return false;
 	if(errno == ERANGE) return false;
@@ -53,7 +54,6 @@ uint32_t parse_uint32(const char* val) {
 bool is_uint64(const char* val) {
 	char* end = NULL;
 	errno = 0;
-	unsigned long long int v = strtoull(val, &end, 0);
 
 	if(end == NULL || *end != '\0') return false;
 	if(errno == ERANGE) return false;
