@@ -178,6 +178,14 @@ long long int strtoll(const char *nptr, char **endptr, int base) {
 	return __strtoll(nptr, endptr, base);
 }
 
+unsigned long int strtoul(const char *nptr, char **endptr, int base) {
+	return __strtoul(nptr, endptr, base);
+}
+
+unsigned long long int strtoull(const char *nptr, char **endptr, int base) {
+	return __strtoull(nptr, endptr, base);
+}
+
 char* strcpy(char *dest, const char *src) {
 	return __memcpy(dest, src, strlen(src) + 1);
 }
