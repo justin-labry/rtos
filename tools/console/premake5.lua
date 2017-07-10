@@ -1,6 +1,8 @@
 project "connect"
+    language 'C'
     includedirs { "../../lib/include", "include" }
     libdirs { "../../lib/ext/", "../../lib/tlsf/", "../../lib/hal/" }
+    linkoptions { "-lc" }
     links { "ext", "tlsf", "hal" }
     location "build"
     kind "ConsoleApp"
@@ -11,8 +13,10 @@ project "connect"
     files { "src/connect.c" }
 
 project "create"
+    language 'C'
     includedirs { "../../lib/include", "include" }
     libdirs { "../../lib/ext/", "../../lib/tlsf/", "../../lib/hal/" }
+    linkoptions { "-lc" }
     links { "ext", "tlsf", "hal" }
     location "build"
     kind "ConsoleApp"
@@ -23,8 +27,10 @@ project "create"
     files { "src/create.c" }
 
 project "destroy"
+    language 'C'
     includedirs { "../../lib/include", "include" }
     libdirs { "../../lib/ext/", "../../lib/tlsf/", "../../lib/hal/" }
+    linkoptions { "-lc" }
     links { "ext", "tlsf", "hal" }
     location "build"
     kind "ConsoleApp"
@@ -35,8 +41,10 @@ project "destroy"
     files { "src/destroy.c" }
 
 project "list"
+    language 'C'
     includedirs { "../../lib/include", "include" }
     libdirs { "../../lib/ext/", "../../lib/tlsf/", "../../lib/hal/" }
+    linkoptions { "-lc" }
     links { "ext", "tlsf", "hal" }
     location "build"
     kind "ConsoleApp"
@@ -47,8 +55,10 @@ project "list"
     files { "src/list.c" }
 
 project "status"
+    language 'C'
     includedirs { "../../lib/include", "include" }
     libdirs { "../../lib/ext/", "../../lib/tlsf/", "../../lib/hal/" }
+    linkoptions { "-lc" }
     links { "ext", "tlsf", "hal" }
     location "build"
     kind "ConsoleApp"
@@ -59,8 +69,10 @@ project "status"
     files { "src/status.c" }
 
 project "start"
+    language 'C'
     includedirs { "../../lib/include", "include" }
     libdirs { "../../lib/ext/", "../../lib/tlsf/", "../../lib/hal/" }
+    linkoptions { "-lc" }
     links { "ext", "tlsf", "hal" }
     location "build"
     kind "ConsoleApp"
@@ -78,8 +90,10 @@ project "start"
     -- FIXME: Start, Pause, Resume, Stop commands are same. Need to be refactored
 
 project "upload"
+    language 'C'
     includedirs { "../../lib/include", "include" }
     libdirs { "../../lib/ext/", "../../lib/tlsf/", "../../lib/hal/" }
+    linkoptions { "-lc" }
     links { "ext", "tlsf", "hal" }
     location "build"
     kind "ConsoleApp"
@@ -90,8 +104,10 @@ project "upload"
     files { "src/upload.c" }
 
 project "download"
+    language 'C'
     includedirs { "../../lib/include", "include" }
     libdirs { "../../lib/ext/", "../../lib/tlsf/", "../../lib/hal/" }
+    linkoptions { "-lc" }
     links { "ext", "tlsf", "hal" }
     location "build"
     kind "ConsoleApp"
@@ -102,8 +118,10 @@ project "download"
     files { "src/download.c" }
 
 project "monitor"
+    language 'C'
     includedirs { "../../lib/include", "include" }
     libdirs { "../../lib/ext/", "../../lib/tlsf/", "../../lib/hal/" }
+    linkoptions { "-lc" }
     links { "ext", "tlsf", "hal" }
     location "build"
     kind "ConsoleApp"
@@ -114,8 +132,10 @@ project "monitor"
     files { "src/monitor.c" }
 
 project "stdin"
+    language 'C'
     includedirs { "../../lib/include", "include" }
     libdirs { "../../lib/ext/", "../../lib/tlsf/", "../../lib/hal/" }
+    linkoptions { "-lc" }
     links { "ext", "tlsf", "hal" }
     location "build"
     kind "ConsoleApp"
@@ -126,8 +146,10 @@ project "stdin"
     files { "src/stdin.c" }
 
 project "md5"
+    language 'C'
     includedirs { "../../lib/include", "include" }
     libdirs { "../../lib/ext/", "../../lib/tlsf/", "../../lib/hal/" }
+    linkoptions { "-lc" }
     links { "ext", "tlsf", "hal" }
     location "build"
     kind "ConsoleApp"
@@ -138,6 +160,7 @@ project "md5"
     files { "src/md5.c" }
 
 project 'console'
+    language 'C'
     kind        'Makefile'
     location    '.'
 
