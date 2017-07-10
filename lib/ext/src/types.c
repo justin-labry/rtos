@@ -3,6 +3,7 @@
 #include <stddef.h>
 #include <errno.h>
 
+#include "_string.h"
 #include "util/types.h"
 
 bool is_uint8(const char* val) {

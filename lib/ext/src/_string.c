@@ -757,7 +757,7 @@ long int __strtol(const char *nptr, char **endptr, int base) {
 
 		p++;
 
-		if(value < lim1 || (value == lim1 && num <= lim2)) {
+		if(value < lim1 || (value == lim1 && (unsigned long int)num <= lim2)) {
 			value = value * base + num;
 		} else {
 			outrange = 1;
@@ -832,7 +832,7 @@ long long int __strtoll(const char *nptr, char **endptr, int base) {
 
 		p++;
 
-		if(value < lim1 || (value == lim1 && num <= lim2)) {
+		if(value < lim1 || (value == lim1 && (unsigned long int)num <= lim2)) {
 			value = value * base + num;
 		} else {
 			outrange = 1;
@@ -898,7 +898,7 @@ unsigned long int __strtoul(const char *nptr, char **endptr, int base) {
 
 		p++;
 
-		if(value < lim1 || (value == lim1 && num <= lim2)) {
+		if(value < lim1 || (value == lim1 && (unsigned long int)num <= lim2)) {
 			value = value * base + num;
 		} else {
 			outrange = 1;
@@ -964,7 +964,7 @@ unsigned long long int __strtoull(const char *nptr, char **endptr, int base) {
 
 		p++;
 
-		if(value < lim1 || (value == lim1 && num <= lim2)) {
+		if(value < lim1 || (value == lim1 && (unsigned long int)num <= lim2)) {
 			value = value * base + num;
 		} else {
 			outrange = 1;

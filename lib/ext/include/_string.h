@@ -21,5 +21,7 @@ int __strncmp(const char* s, const char* d, size_t size);
 char* __strdup(const char* source);
 long int __strtol(const char *nptr, char **endptr, int base);
 long long int __strtoll(const char *nptr, char **endptr, int base);
+long int __strtoul(const char *nptr, char **endptr, int base);
+long long int __strtoull(const char *nptr, char **endptr, int base);
 
 #endif /* ___STRING_H__ */
