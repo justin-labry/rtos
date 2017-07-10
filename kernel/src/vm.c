@@ -9,6 +9,7 @@
 #include <util/ring.h>
 #include <util/cmd.h>
 #include <net/md5.h>
+#include <net/interface.h>
 #include <timer.h>
 #include <fcntl.h>
 #include "file.h"
@@ -67,6 +68,8 @@ static int cmd_status_set(int argc, char** argv, void(*callback)(char* result, i
 static int cmd_status_get(int argc, char** argv, void(*callback)(char* result, int exit_status));
 static int cmd_stdio(int argc, char** argv, void(*callback)(char* result, int exit_status));
 static int cmd_mount(int argc, char** argv, void(*callback)(char* result, int exit_status));
+static int cmd_vnic(int argc, char** argv, void(*callback)(char* result, int exit_status));
+static int cmd_interface(int argc, char** argv, void(*callback)(char* result, int exit_status));
 static Command commands[] = {
 	{
 		.name = "create",
@@ -141,6 +144,16 @@ static Command commands[] = {
 		.desc = "Mount file system",
 		.args = "-t fs_type:str{bfs|ext2|fat} device:str path:str -> bool",
 		.func = cmd_mount
+	},
+	{
+		.name = "vnic",
+		.desc = "List of virtual network interface",
+		.func = cmd_vnic
+	},
+	{
+		.name = "interface",
+		.desc = "List of virtual network interface",
+		.func = cmd_interface
 	},
 };
 
@@ -550,17 +563,6 @@ static bool vm_loop(void* context) {
 		while(*head != *tail) {
 			stdio_dump(mp_apic_id_to_processor_id(i), 1, buffer, head, tail, size);
 		}
-
-		/*
-		 *                buffer = (char*)MP_CORE(__stderr, i);
-		 *                head = (size_t*)MP_CORE(&__stderr_head, i);
-		 *                tail = (size_t*)MP_CORE(&__stderr_tail, i);
-		 *                size = *(size_t*)MP_CORE(&__stderr_size, i);
-		 *
-		 *                while(*head != *tail) {
-		 *                        //stdio_dump(mp_apic_id_to_processor_id(i), 2, buffer, head, tail, size);
-		 *                }
-		 */
 	}
 
 	return true;
@@ -589,6 +591,13 @@ int vm_init() {
 	cmd_register(commands, sizeof(commands) / sizeof(commands[0]));
 
 	return 0;
+}
+
+VM* vm_get(uint32_t vmid) {
+	VM* vm = map_get(vms, (void*)(uint64_t)vmid);
+	if(!vm) return NULL;
+
+	return vm;
 }
 
 uint32_t vm_create(VMSpec* vm_spec) {
@@ -790,11 +799,9 @@ fail:
 }
 
 bool vm_destroy(uint32_t vmid) {
-	VM* vm = map_get(vms, (void*)(uint64_t)vmid);
-	if(!vm) {
-		printf("Manager: Vm not found\n");
-		return false;
-	}
+	VM* vm = vm_get(vmid);
+	if(!vm) return false;
+
 	for(int i = 0; i < vm->core_size; i++) {
 		if(cores[vm->cores[i]].status == VM_STATUS_START) {
 			return false;
@@ -810,8 +817,6 @@ bool vm_destroy(uint32_t vmid) {
 			printf(", ");
 	}
 	printf("]\n");
-
-
 
 	vm_delete(vm, -1);
 
@@ -877,7 +882,7 @@ bool vm_status_set(uint32_t vmid, int status, VM_STATUS_CALLBACK callback, void*
 	VM* vm = map_get(vms, (void*)(uint64_t)vmid);
 	if(!vm) {
 		callback(false, context);
-        return false;
+		return false;
 	}
 
 	int icc_type = 0;
@@ -926,11 +931,12 @@ bool vm_status_set(uint32_t vmid, int status, VM_STATUS_CALLBACK callback, void*
 		}
 	}
 
-	CallbackInfo* info = malloc(sizeof(CallbackInfo));
+	CallbackInfo* info = calloc(1, sizeof(CallbackInfo));
 	if(!info) {
-        callback(false, context);
-        return false;
-    }
+		callback(false, context);
+		return false;
+	}
+
 	info->callback = callback;
 	info->context = context;
 	info->status = status;
@@ -960,25 +966,15 @@ bool vm_status_set(uint32_t vmid, int status, VM_STATUS_CALLBACK callback, void*
 }
 
 VMStatus vm_status_get(uint32_t vmid) {
-	VM* vm = map_get(vms, (void*)(uint64_t)vmid);
-	if(!vm)
-		return -1;
+	VM* vm = vm_get(vmid);
+	if(!vm) return -1;
 
 	return vm->status;
 }
 
-VM* vm_get(uint32_t vmid) {
-	VM* vm = map_get(vms, (void*)(uint64_t)vmid);
-	if(!vm)
-		return NULL;
-
-	return vm;
-}
-
 ssize_t vm_storage_read(uint32_t vmid, void** buf, size_t offset, size_t size) {
-	VM* vm = map_get(vms, (void*)(uint64_t)vmid);
-	if(!vm)
-		return -1;
+	VM* vm = vm_get(vmid);
+	if(!vm) return -1;
 
 	if(offset > vm->storage.count * VM_STORAGE_SIZE_ALIGN) {
 		*buf = NULL;
@@ -996,19 +992,17 @@ ssize_t vm_storage_read(uint32_t vmid, void** buf, size_t offset, size_t size) {
 }
 
 ssize_t vm_storage_write(uint32_t vmid, void* buf, size_t offset, size_t size) {
-	VM* vm = map_get(vms, (void*)(uint64_t)vmid);
-	if(!vm)
-		return -1;
+	VM* vm = vm_get(vmid);
+	if(!vm) return -1;
 
-	if(!size)
-		return 0;
+	if(vm->status != VM_STATUS_STOP) return -1;
 
-	if((uint64_t)offset + size > (uint64_t)vm->storage.count * VM_STORAGE_SIZE_ALIGN)
-		return -1;
+	if(!size) return 0;
+
+	if((uint64_t)offset + size > (uint64_t)vm->storage.count * VM_STORAGE_SIZE_ALIGN) return -1;
 
 	uint32_t index = offset / VM_STORAGE_SIZE_ALIGN;
-	if(index >= vm->storage.count)
-		return -1;
+	if(index >= vm->storage.count) return -1;
 
 	size_t _size = size;
 	offset %= VM_STORAGE_SIZE_ALIGN;
@@ -1031,16 +1025,14 @@ ssize_t vm_storage_write(uint32_t vmid, void* buf, size_t offset, size_t size) {
 	}
 
 
-	if(_size != 0)
-		return -1;
+	if(_size != 0) return -1;
 
 	return size;
 }
 
 ssize_t vm_storage_clear(uint32_t vmid) {
-	VM* vm = map_get(vms, (void*)(uint64_t)vmid);
-	if(!vm)
-		return -1;
+	VM* vm = vm_get(vmid);
+	if(!vm) return -1;
 
 	ssize_t size = 0;
 	for(uint32_t i = 0; i < vm->storage.count; i++) {
@@ -1052,15 +1044,13 @@ ssize_t vm_storage_clear(uint32_t vmid) {
 }
 
 bool vm_storage_md5(uint32_t vmid, uint32_t size, uint32_t digest[4]) {
-	VM* vm = map_get(vms, (void*)(uint64_t)vmid);
-	if(!vm)
-		return false;
-	if(size == 0)
-		size = vm_get(vmid)->used_size;
+	VM* vm = vm_get(vmid);
+	if(!vm) return false;
+
+	if(size == 0) size = vm->used_size;
 
 	uint32_t block_count = size / VM_MEMORY_SIZE_ALIGN;
-	if(vm->storage.count < block_count)
-		return false;
+	if(vm->storage.count < block_count) return false;
 
 	md5_blocks(vm->storage.blocks, vm->storage.count, VM_STORAGE_SIZE_ALIGN, size, digest);
 
@@ -1068,9 +1058,8 @@ bool vm_storage_md5(uint32_t vmid, uint32_t size, uint32_t digest[4]) {
 }
 
 ssize_t vm_stdio(uint32_t vmid, int thread_id, int fd, const char* str, size_t size) {
-	VM* vm = map_get(vms, (void*)(uint64_t)vmid);
-	if(!vm)
-		return -1;
+	VM* vm = vm_get(vmid);
+	if(!vm) return -1;
 
 	if(thread_id < 0 || thread_id >= vm->core_size)
 		return -1;
@@ -1110,11 +1099,10 @@ static int cmd_md5(int argc, char** argv, void(*callback)(char* result, int exit
 	if(!is_uint32(argv[1])) return -1;
 
 	uint32_t vmid = parse_uint32(argv[1]);
-	if(!vm_get(vmid)) return -1;
 
 	if(argc == 3 && !is_uint64(argv[2])) return -2;
 
-	uint64_t size = argc == 3 ? parse_uint64(argv[2]) : vm_get(vmid)->used_size;
+	uint64_t size = argc == 3 ? parse_uint64(argv[2]) : 0;
 	uint32_t md5sum[4];
 
 	bool ret = vm_storage_md5(vmid, size, md5sum);
@@ -1148,8 +1136,7 @@ static int cmd_create(int argc, char** argv, void(*callback)(char* result, int e
 	vm.nics = nics;
 
 	vm.argc = 0;
-	vm.argv = malloc(sizeof(char*) * CMD_MAX_ARGC);
-	memset(vm.argv, 0, sizeof(char*) * CMD_MAX_ARGC);
+	vm.argv = calloc(CMD_MAX_ARGC, sizeof(char*));
 
 	for(int i = 1; i < argc; i++) {
 		if(strcmp(argv[i], "-c") == 0) {
@@ -1308,11 +1295,8 @@ static int cmd_vm_destroy(int argc, char** argv, void(*callback)(char* result, i
 		return CMD_STATUS_WRONG_NUMBER;
 	}
 
-	if(!is_uint32(argv[1])) {
-		return -1;
-	}
-
 	uint32_t vmid = parse_uint32(argv[1]);
+
 	bool ret = vm_destroy(vmid);
 
 	if(ret) {
@@ -1322,6 +1306,7 @@ static int cmd_vm_destroy(int argc, char** argv, void(*callback)(char* result, i
 		printf("Vm destroy success\n");
 		callback("false", -1);
 	}
+
 	return 0;
 }
 
@@ -1390,15 +1375,12 @@ static void status_setted(bool result, void* context) {
 }
 
 static int cmd_status_set(int argc, char** argv, void(*callback)(char* result, int exit_status)) {
-	if(argc < 2) {
-		return CMD_STATUS_WRONG_NUMBER;
-	}
-	if(!is_uint32(argv[1])) {
-		callback("invalid", -1);
-		return -1;
-	}
+	if(argc != 2) return CMD_STATUS_WRONG_NUMBER;
+
+	if(!is_uint32(argv[1])) return -1;
 
 	uint32_t vmid = parse_uint32(argv[1]);
+
 	int status = 0;
 	if(strcmp(argv[0], "start") == 0) {
 		status = VM_STATUS_START;
@@ -1421,38 +1403,32 @@ static int cmd_status_set(int argc, char** argv, void(*callback)(char* result, i
 }
 
 static int cmd_status_get(int argc, char** argv, void(*callback)(char* result, int exit_status)) {
-	if(argc < 2) {
-		return CMD_STATUS_WRONG_NUMBER;
-	}
+	if(argc < 2) return CMD_STATUS_WRONG_NUMBER;
 
 	if(!is_uint32(argv[1])) {
 		return -1;
 	}
 
 	uint32_t vmid = parse_uint32(argv[1]);
-	extern Map* vms;
-	VM* vm = map_get(vms, (void*)(uint64_t)vmid);
-	if(!vm) {
-		printf("VM not found\n");
-		return -1;
-	}
+
+	VMStatus status = vm_status_get(vmid);
 
 	void print_vm_status(int status) {
 		switch(status) {
 			case VM_STATUS_START:
-				printf("start");
+				printf("start\n");
 				callback("start", 0);
 				break;
 			case VM_STATUS_PAUSE:
-				printf("pause");
+				printf("pause\n");
 				callback("pause", 0);
 				break;
 			case VM_STATUS_STOP:
-				printf("stop");
+				printf("stop\n");
 				callback("stop", 0);
 				break;
 			default:
-				printf("invalid");
+				printf("invalid\n");
 				callback("invalid", -1);
 				break;
 		}
@@ -1460,14 +1436,13 @@ static int cmd_status_get(int argc, char** argv, void(*callback)(char* result, i
 
 	printf("VM ID: %d\n", vmid);
 	printf("Status: ");
-	print_vm_status(vm->status);
-	printf("\n");
-	printf("Core size: %d\n", vm->core_size);
-	printf("Core: ");
-	for(int i = 0; i < vm->core_size; i++) {
-		printf("[%d] ", vm->cores[i]);
-	}
-	printf("\n");
+	print_vm_status(status);
+// 	printf("Core size: %d\n", vm->core_size);
+// 	printf("Core: ");
+// 	for(int i = 0; i < vm->core_size; i++) {
+// 		printf("[%d] ", vm->cores[i]);
+// 	}
+// 	printf("\n");
 
 	return 0;
 }
@@ -1478,16 +1453,13 @@ static int cmd_stdio(int argc, char** argv, void(*callback)(char* result, int ex
 		printf("Argument is not enough\n");
 		return -1;
 	}
-	if(!is_uint32(argv[1])) {
-		printf("VM ID is wrong\n");
-		return -1;
-	}
-	if(!is_uint8(argv[2])) {
-		printf("Thread ID is wrong\n");
+
+	if(!is_uint32(argv[1]) || !is_uint8(argv[2])) {
+		printf("Wrong arguments\n");
 		return -2;
 	}
 
-	uint32_t vmid =  parse_uint32(argv[1]);
+	uint32_t vmid = parse_uint32(argv[1]);
 	uint8_t thread_id = parse_uint8(argv[2]);
 	for(int i = 3; i < argc; i++) {
 		printf("%s\n", argv[i]);
@@ -1556,3 +1528,273 @@ static int cmd_mount(int argc, char** argv, void(*callback)(char* result, int ex
 	return -2;
 }
 
+static void print_byte_size(uint64_t byte_size) {
+	uint64_t size = 1;
+	for(int i = 0; i < 5; i++) {
+		if((byte_size / size) < 1000) {
+			printf("(%.1f ", (float)byte_size / size);
+			switch(i) {
+				case 0:
+					printf("B)");
+					break;
+				case 1:
+					printf("KB)");
+					break;
+				case 2:
+					printf("MB)");
+					break;
+				case 3:
+					printf("GB)");
+					break;
+				case 4:
+					printf("TB)");
+					break;
+			}
+			return;
+		}
+
+		size *= 1000;
+	}
+}
+
+static void print_vnic_metadata(VNIC* vnic) {
+	printf("%12sRX packets:%d dropped:%d\n", "", vnic->input_packets, vnic->input_drop_packets);
+	printf("%12sTX packets:%d dropped:%d\n", "", vnic->output_packets, vnic->output_drop_packets);
+
+	printf("%12sRX bytes:%lu ", "", vnic->input_bytes);
+	print_byte_size(vnic->input_bytes);
+	printf("  TX bytes:%lu ", vnic->output_bytes);
+	print_byte_size(vnic->output_bytes);
+	printf("\n");
+	printf("%12sHead Padding:%d Tail Padding:%d\n", "",vnic->padding_head, vnic->padding_tail);
+}
+
+static void print_vnic(VNIC* vnic) {
+	printf("%12s", vnic->name);
+	printf("HWaddr %02x:%02x:%02x:%02x:%02x:%02x  ",
+			(vnic->mac >> 40) & 0xff,
+			(vnic->mac >> 32) & 0xff,
+			(vnic->mac >> 24) & 0xff,
+			(vnic->mac >> 16) & 0xff,
+			(vnic->mac >> 8) & 0xff,
+			(vnic->mac >> 0) & 0xff);
+
+	printf("Parent %s\n", vnic->parent);
+	printf("\n");
+}
+
+static void print_interface(VNIC* vnic) {
+	IPv4InterfaceTable* table = interface_table_get(vnic->nic);
+	if(!table)
+		return;
+
+	int offset = 1;
+	for(int interface_index = 0; interface_index < IPV4_INTERFACE_MAX_COUNT; interface_index++, offset <<= 1) {
+		IPv4Interface* interface = NULL;
+		if(table->bitmap & offset)
+			 interface = &table->interfaces[interface_index];
+		else if(interface_index)
+			continue;
+
+		printf("%12s:%d", vnic->name, interface_index);
+		printf("HWaddr %02x:%02x:%02x:%02x:%02x:%02x  ",
+				(vnic->mac >> 40) & 0xff,
+				(vnic->mac >> 32) & 0xff,
+				(vnic->mac >> 24) & 0xff,
+				(vnic->mac >> 16) & 0xff,
+				(vnic->mac >> 8) & 0xff,
+				(vnic->mac >> 0) & 0xff);
+
+		printf("Parent %s\n", vnic->parent);
+		printf("\n");
+
+		if(interface) {
+			uint32_t ip = interface->address;
+			printf("%12sinet addr:%d.%d.%d.%d  ", "", (ip >> 24) & 0xff, (ip >> 16) & 0xff, (ip >> 8) & 0xff, (ip >> 0) & 0xff);
+			uint32_t mask = interface->netmask;
+			printf("\tMask:%d.%d.%d.%d\n", (mask >> 24) & 0xff, (mask >> 16) & 0xff, (mask >> 8) & 0xff, (mask >> 0) & 0xff);
+			//uint32_t gw = interface->gateway;
+			//printf("%12sGateway:%d.%d.%d.%d\n", "", (gw >> 24) & 0xff, (gw >> 16) & 0xff, (gw >> 8) & 0xff, (gw >> 0) & 0xff);
+		}
+
+		if(interface_index == 0)
+			print_vnic_metadata(vnic);
+		printf("\n");
+	}
+}
+
+static int cmd_vnic(int argc, char** argv, void(*callback)(char* result, int exit_status)) {
+	extern Map* vms;
+	MapIterator iter;
+	map_iterator_init(&iter, vms);
+	while(map_iterator_has_next(&iter)) {
+		MapEntry* entry = map_iterator_next(&iter);
+		uint16_t vmid = (uint16_t)(uint64_t)entry->key;
+		VM* vm = entry->data;
+
+		for(int i = 0; i < vm->nic_count; i++) {
+			VNIC* vnic = vm->nics[i];
+			print_vnic(vnic);
+			print_vnic_metadata(vnic);
+		}
+		printf("\n");
+	}
+
+	return 0;
+}
+
+static bool parse_vnic_interface(char* name, uint16_t* vmid, uint16_t* vnic_index, uint16_t* interface_index) {
+	if(strncmp(name, "v", 1)) return false;
+
+	char* next;
+	char* _vmid = strtok_r(name + 1, "eth", &next);
+	if(!_vmid) return false;
+
+	if(!is_uint8(_vmid)) return false;
+
+	*vmid = parse_uint8(_vmid);
+
+	char* _interface_index;
+	char* _vnic_index = strtok_r(next, ":", &_interface_index);
+	if(!_vnic_index) return false;
+
+	if(!is_uint8(_vnic_index)) return false;
+
+	*vnic_index = parse_uint8(_vnic_index);
+
+	if(_interface_index) {
+		if(!is_uint8(_interface_index)) return false;
+
+		*interface_index = parse_uint8(_interface_index) + 1;
+	} else *interface_index = 0;
+
+	return true;
+}
+
+static bool parse_addr(char* argv, uint32_t* address) {
+	char* next = NULL;
+	uint32_t temp;
+	temp = strtol(argv, &next, 0);
+	if(temp > 0xff) return false;
+
+	*address = (temp & 0xff) << 24;
+	if(next == argv) return false;
+
+	argv = next;
+	if(*argv != '.') return false;
+
+	argv++;
+	temp = strtol(argv, &next, 0);
+	if(temp > 0xff) return false;
+
+	*address |= (temp & 0xff) << 16;
+	if(next == argv) return false;
+
+	argv = next;
+	if(*argv != '.') return false;
+
+	argv++;
+	temp = strtol(argv, &next, 0);
+	if(temp > 0xff) return false;
+
+	*address |= (temp & 0xff) << 8;
+	if(next == argv) return false;
+
+	argv = next;
+	if(*argv != '.') return false;
+
+	argv++;
+	temp = strtol(argv, &next, 0);
+	if(temp > 0xff) return false;
+
+	*address |= temp & 0xff;
+	if(next == argv) return false;
+
+	argv = next;
+	if(*argv != '\0') return false;
+
+	return true;
+}
+static int cmd_interface(int argc, char** argv, void(*callback)(char* result, int exit_status)) {
+	if(argc == 1) {
+		extern Map* vms;
+		MapIterator iter;
+		map_iterator_init(&iter, vms);
+		while(map_iterator_has_next(&iter)) {
+			MapEntry* entry = map_iterator_next(&iter);
+			uint16_t vmid = (uint16_t)(uint64_t)entry->key;
+			VM* vm = entry->data;
+
+			for(int i = 0; i < vm->nic_count; i++) {
+				VNIC* vnic = vm->nics[i];
+				print_interface(vnic);
+			}
+		}
+
+		return 0;
+	} else {
+		uint16_t vmid;
+		uint16_t vnic_index;
+		uint16_t interface_index;
+		// TODO use vnic's name
+		if(!parse_vnic_interface(argv[1], &vmid, &vnic_index, &interface_index)) return -1;
+
+		VM* vm = map_get(vms, (void*)(uint64_t)vmid);
+		if(!vm) return -2;
+
+		if(vnic_index > vm->nic_count) return -2;
+
+		VNIC* vnic = vm->nics[vnic_index];
+
+		if(!vnic) return -2;
+
+		IPv4InterfaceTable* table = interface_table_get(vnic->nic);
+		if(!table) return -3;
+
+		IPv4Interface* interface = NULL;
+		uint16_t offset = 1;
+		for(int i = 0; i < interface_index; i++)
+			offset <<= 1;
+
+		table->bitmap |= offset;
+		interface = &table->interfaces[interface_index];
+
+		if(argc > 2) {
+			uint32_t address;
+			if(is_uint32(argv[2])) {
+				address = parse_uint32(argv[2]);
+			} else if(!parse_addr(argv[2], &address)) {
+				printf("Address wrong\n");
+				return 0;
+			}
+			if(address == 0) { //disable
+				table->bitmap ^= offset;
+				return 0;
+			}
+
+			interface->address = address;
+		}
+		if(argc > 3) {
+			uint32_t netmask;
+			if(is_uint32(argv[3])) {
+				netmask = parse_uint32(argv[3]);
+			} else if(!parse_addr(argv[3], &netmask)) {
+				printf("Address wrong\n");
+				return 0;
+			}
+			interface->netmask = netmask;
+		}
+		if(argc > 4) {
+			uint32_t gateway;
+			if(is_uint32(argv[4])) {
+				gateway = parse_uint32(argv[4]);
+			} else if(!parse_addr(argv[4], &gateway)) {
+				printf("Address wrong\n");
+				return 0;
+			}
+			interface->gateway = gateway;
+		}
+	}
+
+	return 0;
+}
