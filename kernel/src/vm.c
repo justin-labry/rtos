@@ -934,7 +934,7 @@ static bool status_changed(uint64_t event_type, void* event, void* context) {
 bool vm_status_set(uint32_t vmid, int status, VM_STATUS_CALLBACK callback, void* context) {
 	VM* vm = vm_get(vmid);
 	if(!vm) {
-		errno = ESTATUS;
+		errno = EVMID;
 		return false;
 	}
 
