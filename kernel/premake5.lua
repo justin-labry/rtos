@@ -1,4 +1,5 @@
 project 'kernel'
+    language 'C'
     kind 'ConsoleApp'
 	defines { 'PACKETNGIN_SINGLE' }
 

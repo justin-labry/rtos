@@ -1,4 +1,5 @@
 project 'fat'
+    language 'C'
     kind        'ConsoleApp'
     targetname  'fat.ko'
 

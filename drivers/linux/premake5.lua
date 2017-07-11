@@ -1,4 +1,5 @@
 project 'linux'
+    language 'C'
     kind        'ConsoleApp'
     targetname  'linux.ko'
 

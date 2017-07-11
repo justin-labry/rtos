@@ -1,4 +1,5 @@
 project "pn"
+    language 'C'
     kind 	"ConsoleApp"
     targetdir	"."
     targetname	"pnd"

@@ -1,4 +1,5 @@
 project 'loader'
+    language 'C'
     kind 'ConsoleApp'
 
     build.compileProperty('x86')

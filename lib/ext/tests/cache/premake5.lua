@@ -1,4 +1,5 @@
 project 'cache'
+    language 'C'
     kind 'ConsoleApp'
 
     location '.'

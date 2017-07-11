@@ -2,6 +2,7 @@
 workspace "Kernel"
     -- [[ 1. Linux compability layer ]]
     project "linux"
+        language 'C'
         kind "ConsoleApp"
         location "linux/build"
         targetname "linux.ko"
@@ -13,6 +14,7 @@ workspace "Kernel"
 
     -- [[ 2. VirtI/O ]]
     project "virtio"
+        language 'C'
         kind "ConsoleApp"
         location "virtio/build"
         targetname "virtio.ko"
@@ -23,6 +25,7 @@ workspace "Kernel"
 
     -- [[ 3. FAT ]]
     project "fat"
+        language 'C'
         kind "ConsoleApp"
         location "fat/build"
         targetname "fat.ko"

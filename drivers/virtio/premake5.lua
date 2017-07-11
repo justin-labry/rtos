@@ -1,4 +1,5 @@
 project 'virtio'
+    language 'C'
     kind        'ConsoleApp'
     targetname  'virtio.ko'
 
