@@ -347,3 +347,9 @@ int file_size(int fd) {
 
 	return file->driver->file_size(file->priv);
 }
+
+int stat(const char* pathname, struct stat* buf) {
+	//TODO
+	memset(buf, 0, sizeof(struct stat));
+	return 0;
+}

@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
 #include <malloc.h>
 #include <util/event.h>
 #include <errno.h>
@@ -598,11 +600,12 @@ static VM* vm_remove(uint32_t vmid) {
 
 uint32_t vm_create(VMSpec* vm_spec) {
 	VM* vm = gmalloc(sizeof(VM));
-	if(!vm) return 0;
+	if(!vm) {
+		errno = EALLOCMEM;
+		return 0;
+	}
 	memset(vm, 0, sizeof(VM));
 
-	// Allocate vmid
-	// TODO fix
 	while(true) {
 		uint32_t vmid = last_vmid++;
 
@@ -618,7 +621,10 @@ uint32_t vm_create(VMSpec* vm_spec) {
 		argv_len += strlen(vm_spec->argv[i]) + 1;
 	}
 	vm->argv = gmalloc(argv_len);
-	if(!vm->argv) goto fail;
+	if(!vm->argv) {
+		errno = EALLOCMEM;
+		goto fail;
+	}
 
 	vm->argc = vm_spec->argc;
 	if(vm->argc) {
@@ -647,7 +653,7 @@ uint32_t vm_create(VMSpec* vm_spec) {
 	}
 
 	if(j < vm->core_size) {
-		printf("Manager: Not enough core to allocate.\n");
+		errno = EALLOCTHREAD;
 		goto fail;
 	}
 
@@ -655,7 +661,7 @@ uint32_t vm_create(VMSpec* vm_spec) {
 	uint32_t memory_size = vm_spec->memory_size;
 	memory_size = (memory_size + (VM_MEMORY_SIZE_ALIGN - 1)) & ~(VM_MEMORY_SIZE_ALIGN - 1);
 	if(memory_size > VM_MAX_MEMORY_SIZE) {
-		printf("Manager: VM Memory is too large\n");
+		errno = EOVERMAX;
 		goto fail;
 	}
 
@@ -665,7 +671,7 @@ uint32_t vm_create(VMSpec* vm_spec) {
 	for(uint32_t i = 0; i < vm->memory.count; i++) {
 		vm->memory.blocks[i] = bmalloc(1);
 		if(!vm->memory.blocks[i]) {
-			printf("Manager: Not enough memory to allocate.\n");
+			errno = EALLOCMEM;
 			goto fail;
 		}
 	}
@@ -674,7 +680,7 @@ uint32_t vm_create(VMSpec* vm_spec) {
 	uint32_t storage_size = vm_spec->storage_size;
 	storage_size = (storage_size + (VM_STORAGE_SIZE_ALIGN - 1)) & ~(VM_STORAGE_SIZE_ALIGN - 1);
 	if(storage_size > VM_MAX_STORAGE_SIZE) {
-		printf("Manager: VM STORAGE is too large\n");
+		errno = EOVERMAX;
 		goto fail;
 	}
 
@@ -684,7 +690,7 @@ uint32_t vm_create(VMSpec* vm_spec) {
 	for(uint32_t i = 0; i < vm->storage.count; i++) {
 		vm->storage.blocks[i] = bmalloc(1);
 		if(!vm->storage.blocks[i]) {
-			printf("Manager: Not enough storage to allocate.\n");
+			errno = EALLOCMEM;
 			goto fail;
 		}
 	}
@@ -693,7 +699,7 @@ uint32_t vm_create(VMSpec* vm_spec) {
 	NICSpec* nics = vm_spec->nics;
 	vm->nic_count = vm_spec->nic_count;
 	if(vm->nic_count > VM_MAX_NIC_COUNT) {
-		printf("Manager: VNIC is too many\n");
+		errno = EOVERMAX;
 		goto fail;
 	}
 
@@ -701,7 +707,7 @@ uint32_t vm_create(VMSpec* vm_spec) {
 	if(vm->nic_count) {
 		vm->nics = gmalloc(sizeof(VNIC) * vm->nic_count);
 		if(!vm->nics) {
-			printf("Manager: Can't allocate memory\n");
+			errno = EALLOCMEM;
 			goto fail;
 		}
 
@@ -709,7 +715,7 @@ uint32_t vm_create(VMSpec* vm_spec) {
 		for(int i = 0; i < vm->nic_count; i++) {
 			NICDevice* nic_dev = strlen(nics[i].parent) ? nicdev_get(nics[i].parent) : nicdev_get_by_idx(0);
 			if(!nic_dev) {
-				printf("Manager: Invalid NIC device\n");
+				errno = ENICDEV;
 				goto fail;
 			}
 
@@ -721,7 +727,7 @@ uint32_t vm_create(VMSpec* vm_spec) {
 					mac ^= 0x01L << 40;	// Locally administrered
 				} while(nicdev_get_vnic_mac(nic_dev, mac) != NULL);
 			} else if(nicdev_get_vnic_mac(nic_dev, mac) != NULL) {
-				printf("Manager: The mac address already in use: %012lx.\n", mac);
+				errno = EVNICMAC;
 				goto fail;
 			}
 
@@ -741,7 +747,7 @@ uint32_t vm_create(VMSpec* vm_spec) {
 
 			VNIC* vnic = gmalloc(sizeof(VNIC));
 			if(!vnic) {
-				printf("Manager: Failed to allocate VNIC\n");
+				errno = EALLOCMEM;
 				goto fail;
 			}
 
@@ -752,12 +758,12 @@ uint32_t vm_create(VMSpec* vm_spec) {
 			vnic->nic_size = nics[i].pool_size ? : NIC_DEFAULT_POOL_SIZE;
 			vnic->nic = bmalloc(((nics[i].pool_size ? : NIC_DEFAULT_POOL_SIZE) + 0x200000 - 1) / 0x200000);
 			if(!vnic->nic) {
-				printf("Manager: Failed to allocate NIC in VNIC\n");
+				errno = EALLOCMEM;
 				goto fail;
 			}
 
 			if(!vnic_init(vnic, attrs)) {
-				printf("Manager: Not enough VNIC to allocate: errno=%d.\n", errno);
+				errno = EVNICINIT;
 				goto fail;
 			}
 
@@ -767,7 +773,7 @@ uint32_t vm_create(VMSpec* vm_spec) {
 			extern int dispatcher_create_vnic(void* vnic);
 			#endif
 			if(dispatcher_create_vnic(vnic) < 0) {
-				printf("Manager: Failed to create VNIC in dispatcher module: errno=%d.\n", errno);
+				errno = EVNICINIT;
 				goto fail;
 			}
 
@@ -778,6 +784,7 @@ uint32_t vm_create(VMSpec* vm_spec) {
 	}
 
 	if(!vm_put(vm)) {
+		errno = EADDVM;
 		goto fail;
 	}
 
@@ -796,14 +803,17 @@ fail:
 
 bool vm_destroy(uint32_t vmid) {
 	VM* vm = vm_remove(vmid);
-	if(!vm) return false;
+	if(!vm) {
+		errno = EVMID;
+		return false;
+	}
 
 	for(int i = 0; i < vm->core_size; i++) {
 		if(cores[vm->cores[i]].status == VM_STATUS_START) {
+			errno = ESTATUS;
 			return false;
 		}
 	}
-
 
 	printf("Manager: Delete vm[%d] on cores [", vmid);
 	for(int i = 0; i < vm->core_size; i++) {
@@ -820,9 +830,10 @@ bool vm_destroy(uint32_t vmid) {
 
 bool vm_get_spec(VMSpec* vm_spec) {
 	VM* vm = vm_get(vm_spec->id);
-	if(!vm) return false;
-
-	if(!vm_spec) return false;
+	if(!vm) {
+		errno = EVMID;
+		return false;
+	}
 
 	vm_spec->id = vm->id;
 	vm_spec->core_size = vm->core_size;
@@ -871,15 +882,17 @@ int vm_list(uint32_t* vmids, int size) {
 	return i;
 }
 
-int vm_cores(uint32_t vmid, uint32_t* cores, int size) {
+int vm_processors(uint32_t vmid, uint16_t* processors) {
 	VM* vm = vm_get(vmid);
-	if(!vm) return -1;
+	if(!vm) {
+		errno = EVMID;
+		return -1;
+	}
 
-	if(vm->core_size > size)
-		return -2;
-
-	for(int i = 0; i < vm->core_size; i++)
-		cores[i] = vm->cores[i];
+	*processors = 0;
+	for(int i = 0; i < vm->core_size; i++) {
+		*processors |= 1 << vm->cores[i];
+	}
 
 	return vm->core_size;
 }
@@ -919,9 +932,9 @@ static bool status_changed(uint64_t event_type, void* event, void* context) {
 }
 
 bool vm_status_set(uint32_t vmid, int status, VM_STATUS_CALLBACK callback, void* context) {
-	VM* vm = map_get(vms, (void*)(uint64_t)vmid);
+	VM* vm = vm_get(vmid);
 	if(!vm) {
-		callback(false, context);
+		errno = ESTATUS;
 		return false;
 	}
 
@@ -929,35 +942,33 @@ bool vm_status_set(uint32_t vmid, int status, VM_STATUS_CALLBACK callback, void*
 	uint64_t event_type = 0;
 	switch(status) {
 		case VM_STATUS_START:
-			printf("VM Status start\n");
 			if(vm->status != VM_STATUS_STOP) {
-				callback(false, context);
-                return false;
+				errno = ESTATUS;
+				return false;
 			}
 			event_type = EVENT_VM_STARTED;
 			icc_type = ICC_TYPE_START;
 			break;
 		case VM_STATUS_PAUSE:
 			if(vm->status != VM_STATUS_START) {
-				callback(false, context);
-                return false;
+				errno = ESTATUS;
+				return false;
 			}
 			event_type = EVENT_VM_PAUSED;
 			icc_type = ICC_TYPE_PAUSE;
 			break;
 		case VM_STATUS_RESUME:
 			if(vm->status != VM_STATUS_PAUSE) {
-				callback(false, context);
-                return false;
+				errno = ESTATUS;
+				return false;
 			}
 			event_type = EVENT_VM_RESUMED;
 			icc_type = ICC_TYPE_RESUME;
 			break;
 		case VM_STATUS_STOP:
-			printf("VM Status stop\n");
 			if(vm->status != VM_STATUS_PAUSE && vm->status != VM_STATUS_START) {
-				callback(false, context);
-                return false;
+				errno = ESTATUS;
+				return false;
 			}
 			event_type = EVENT_VM_STOPPED;
 			icc_type = ICC_TYPE_STOP;
@@ -973,7 +984,7 @@ bool vm_status_set(uint32_t vmid, int status, VM_STATUS_CALLBACK callback, void*
 
 	CallbackInfo* info = calloc(1, sizeof(CallbackInfo));
 	if(!info) {
-		callback(false, context);
+		errno = EALLOCMEM;
 		return false;
 	}
 
@@ -1002,22 +1013,29 @@ bool vm_status_set(uint32_t vmid, int status, VM_STATUS_CALLBACK callback, void*
 		}
 	}
 
-    return true;
+	return true;
 }
 
 VMStatus vm_status_get(uint32_t vmid) {
 	VM* vm = vm_get(vmid);
-	if(!vm) return -1;
+	if(!vm) {
+		errno = EVMID;
+		return -1;
+	}
 
 	return vm->status;
 }
 
 ssize_t vm_storage_read(uint32_t vmid, void** buf, size_t offset, size_t size) {
 	VM* vm = vm_get(vmid);
-	if(!vm) return -1;
+	if(!vm) {
+		errno = EVMID;
+		return -1;
+	}
 
 	if(offset > vm->storage.count * VM_STORAGE_SIZE_ALIGN) {
 		*buf = NULL;
+		errno = EOVERMAX;
 		return 0;
 	}
 
@@ -1033,16 +1051,28 @@ ssize_t vm_storage_read(uint32_t vmid, void** buf, size_t offset, size_t size) {
 
 ssize_t vm_storage_write(uint32_t vmid, void* buf, size_t offset, size_t size) {
 	VM* vm = vm_get(vmid);
-	if(!vm) return -1;
+	if(!vm) {
+		errno = EVMID;
+		return -1;
+	}
 
-	if(vm->status != VM_STATUS_STOP) return -1;
+	if(vm->status != VM_STATUS_STOP) {
+		errno = ESTATUS;
+		return -1;
+	}
 
 	if(!size) return 0;
 
-	if((uint64_t)offset + size > (uint64_t)vm->storage.count * VM_STORAGE_SIZE_ALIGN) return -1;
+	if((uint64_t)offset + size > (uint64_t)vm->storage.count * VM_STORAGE_SIZE_ALIGN) {
+		errno = EOVERMAX;
+		return -1;
+	}
 
 	uint32_t index = offset / VM_STORAGE_SIZE_ALIGN;
-	if(index >= vm->storage.count) return -1;
+	if(index >= vm->storage.count) {
+		errno = EOVERMAX;
+		return -1;
+	}
 
 	size_t _size = size;
 	offset %= VM_STORAGE_SIZE_ALIGN;
@@ -1064,15 +1094,20 @@ ssize_t vm_storage_write(uint32_t vmid, void* buf, size_t offset, size_t size) {
 		offset = 0;
 	}
 
-
-	if(_size != 0) return -1;
+	if(_size != 0) {
+		errno = EOVERMAX;
+		return -1;
+	}
 
 	return size;
 }
 
 ssize_t vm_storage_clear(uint32_t vmid) {
 	VM* vm = vm_get(vmid);
-	if(!vm) return -1;
+	if(!vm) {
+		errno = EVMID;
+		return -1;
+	}
 
 	ssize_t size = 0;
 	for(uint32_t i = 0; i < vm->storage.count; i++) {
@@ -1085,12 +1120,18 @@ ssize_t vm_storage_clear(uint32_t vmid) {
 
 bool vm_storage_md5(uint32_t vmid, uint32_t size, uint32_t digest[4]) {
 	VM* vm = vm_get(vmid);
-	if(!vm) return false;
+	if(!vm) {
+		errno = EVMID;
+		return false;
+	}
 
 	if(size == 0) size = vm->used_size;
 
 	uint32_t block_count = size / VM_MEMORY_SIZE_ALIGN;
-	if(vm->storage.count < block_count) return false;
+	if(vm->storage.count < block_count) {
+		errno = EOVERMAX;
+		return false;
+	}
 
 	md5_blocks(vm->storage.blocks, vm->storage.count, VM_STORAGE_SIZE_ALIGN, size, digest);
 
@@ -1132,6 +1173,40 @@ void vm_stdio_handler(VM_STDIO_CALLBACK callback) {
 	stdio_callback = callback;
 }
 
+void print_vm_error(const char* msg) {
+	switch(errno) {
+		case EVMID: 
+			printf("VM Error: VM ID is wrong");
+			break;
+		case ESTATUS:
+			printf("VM Error: VM status is wrong");
+			break;
+		case EALLOCMEM:
+			printf("VM Error: Allocating memory is fail");
+			break;
+		case EALLOCTHREAD:
+			printf("VM Error: Allocating thread is fail");
+			break;
+		case EOVERMAX:
+			printf("VM Error: Over limit");
+			break;
+		case ENICDEV:
+			printf("VM Error: Can't found NIC device");
+			break;
+		case EVNICMAC:
+			printf("VM Error: MAC address is wrong");
+			break;
+		case EVNICINIT:
+			printf("VM Error: Initilaizing vnic is fail");
+			break;
+		case EADDVM:
+			printf("VM Error: Adding VM is fail");
+			break;
+	}
+
+	if(msg) printf(": %s\n", msg);
+	else printf("\n");
+}
 ////
 
 static void print_nic_spec_metadata(NICSpec* nic_spec) {
@@ -1161,25 +1236,30 @@ static void print_nic_spec(NICSpec* nic_spec) {
 
 static void print_vm_spec(VMSpec* vm_spec) {
 	printf("VM[%d]:\n", vm_spec->id);
-	printf("\tProcessors: ", "");
-	uint32_t cores[16];
-	int count = vm_cores(vm_spec->id, cores, 16);
+	printf("    Processors: ", "");
+	uint16_t processors;
+	int count = vm_processors(vm_spec->id, &processors);
 	printf("[");
-	for(int i = 0; i < count; i++) {
-		printf("'%d'", mp_apic_id_to_processor_id(cores[i]));
-		if(i + 1 < count)
-			printf(", ");
+	for(int i = 0; i < 16 && count; i++) {
+		if(processors & 1) {
+			printf("%d", mp_apic_id_to_processor_id(i));
+			if(--count)
+				printf(", ");
+		}
+		processors >>= 1;
 	}
 	printf("]\n");
 
-	printf("\tMemory: %dMbs\n", vm_spec->memory_size  / 0x100000);
-	printf("\tStorage: %dMbs\n", vm_spec->storage_size  / 0x100000);
+	printf("    Memory: %dMbs\n", vm_spec->memory_size  / 0x100000);
+	printf("    Storage: %dMbs\n", vm_spec->storage_size  / 0x100000);
 
 	if(vm_spec->nic_count) {
-		printf("\tNICS:\n");
+		printf("    NICS:\n");
 		for(int i = 0; i < vm_spec->nic_count; i++) {
 			NICSpec* nic_spec = &vm_spec->nics[i];
-			printf("\t", nic_spec->name);
+			printf("        %s:\n", nic_spec->name);
+			printf("            Parent: %s\n", nic_spec->parent);
+			printf("            Mac: ");
 			for(int j = 5; j >= 0; j--) {
 				printf("%02lx", (nic_spec->mac >> (j * 8)) & 0xff);
 				if(j - 1 >= 0)
@@ -1187,22 +1267,25 @@ static void print_vm_spec(VMSpec* vm_spec) {
 				else
 					printf(" ");
 			}
-			printf(" Parent %s\n", nic_spec->parent);
-			printf("\t%ldMbps/%ld, %ldMbps/%ld, %ldMBs\n", nic_spec->rx_bandwidth / 1000000, nic_spec->rx_buffer_size, nic_spec->tx_bandwidth / 1000000, nic_spec->rx_buffer_size, nic_spec->pool_size / (1024 * 1024));
+			printf("\n");
+			printf("            RXBandwidth: %ldMbps\n", nic_spec->rx_bandwidth / 1000000);
+			printf("            Rxsize: %ld\n", nic_spec->rx_buffer_size);
+			printf("            TXBandwidth: %ldMbps\n", nic_spec->tx_bandwidth / 1000000);
+			printf("            TxSize: %ld\n", nic_spec->rx_buffer_size);
+			printf("            PoolSize: %ldMbs\n", nic_spec->pool_size / (1024 * 1024));
 		}
 	}
 
 	if(vm_spec->argc) {
-		printf("\tArgs: ");
+		printf("    Args: [");
 		for(int i = 0; i < vm_spec->argc; i++) {
-			char* ch = strchr(vm_spec->argv[i], ' ');
-			if(ch == NULL)
-				printf("%s ", vm_spec->argv[i]);
-			else
-				printf("\"%s\" ", vm_spec->argv[i]);
-		}
-	}
+			printf("'%s' ", vm_spec->argv[i]);
 
+			if(i - 1 < vm_spec->argc)
+				printf(", ");
+		}
+		printf("]\n");
+	}
 }
 
 static int cmd_md5(int argc, char** argv, void(*callback)(char* result, int exit_status)) {
@@ -1219,6 +1302,7 @@ static int cmd_md5(int argc, char** argv, void(*callback)(char* result, int exit
 
 	bool ret = vm_storage_md5(vmid, size, md5sum);
 	if(!ret) {
+		print_vm_error("");
 		return CMD_ERROR;
 	} else {
 		char* p = (char*)cmd_result;
@@ -1338,6 +1422,7 @@ static int cmd_vm_destroy(int argc, char** argv, void(*callback)(char* result, i
 		return CMD_SUCCESS;
 	} else {
 		printf("Vm destroy fail\n");
+		print_vm_error("");
 		return CMD_ERROR;
 	}
 }
@@ -1373,8 +1458,12 @@ static int cmd_upload(int argc, char** argv, void(*callback)(char* result, int e
 	if(!is_uint32(argv[1])) return CMD_WRONG_TYPE_OF_ARGS;
 
 	uint32_t vmid = parse_uint32(argv[1]);
-	VM* vm = vm_get(vmid);
-	if(!vm || vm->status != VM_STATUS_STOP) return CMD_ERROR;
+	struct stat file_stat;
+	stat(argv[2], &file_stat); 
+	if(S_ISDIR(file_stat.st_mode)) {
+		printf("Error: %s is not regular file\n");
+		return CMD_ERROR;
+	}
 
 	int fd = open(argv[2], O_RDONLY);
 	if(fd < 0) {
@@ -1387,8 +1476,8 @@ static int cmd_upload(int argc, char** argv, void(*callback)(char* result, int e
 	char buf[4096];
 	while((len = read(fd, buf, 4096)) > 0) {
 		if(vm_storage_write(vmid, buf, offset, len) != len) {
-			printf("Upload fail : %s\n", argv[2]);
-			callback("false", -1);
+			print_vm_error("");
+			close(fd);
 			return CMD_ERROR;
 		}
 
@@ -1396,7 +1485,7 @@ static int cmd_upload(int argc, char** argv, void(*callback)(char* result, int e
 	}
 
 	printf("Upload success : %s to %d\n", argv[2], vmid);
-	callback("true", 0);
+	close(fd);
 
 	return CMD_SUCCESS;
 }
@@ -1414,20 +1503,23 @@ static int cmd_status_set(int argc, char** argv, void(*callback)(char* result, i
 
 	int status = 0;
 	if(strcmp(argv[0], "start") == 0) {
+		printf("Start VM...\n");
 		status = VM_STATUS_START;
 	} else if(strcmp(argv[0], "pause") == 0) {
+		printf("Pause VM...\n");
 		status = VM_STATUS_PAUSE;
 	} else if(strcmp(argv[0], "resume") == 0) {
+		printf("Resume VM...\n");
 		status = VM_STATUS_RESUME;
 	} else if(strcmp(argv[0], "stop") == 0) {
+		printf("Stop VM...\n");
 		status = VM_STATUS_STOP;
-	} else {
-		callback("invalid", -1);
-		return CMD_WRONG_TYPE_OF_ARGS;
-	}
+	} else return CMD_WRONG_TYPE_OF_ARGS;
 
-	shell_sync();
-	vm_status_set(vmid, status, status_setted, callback);
+	if(!vm_status_set(vmid, status, status_setted, callback)) {
+		print_vm_error("");
+		return CMD_ERROR;
+	}
 
 	return CMD_SUCCESS;
 }
@@ -1464,7 +1556,10 @@ static int cmd_status_get(int argc, char** argv, void(*callback)(char* result, i
 	vm_spec.nics = nics;
 	vm_spec.id = vmid;
 
-	if(!vm_get_spec(&vm_spec)) return CMD_ERROR;
+	if(!vm_get_spec(&vm_spec)) {
+		print_vm_error("");
+		return CMD_ERROR;
+	}
 	print_vm_spec(&vm_spec);
 
 	VMStatus status = vm_status_get(vmid);
@@ -1485,7 +1580,7 @@ static int cmd_stdio(int argc, char** argv, void(*callback)(char* result, int ex
 		printf("%s\n", argv[i]);
 		ssize_t len = vm_stdio(vmid, thread_id, 0, argv[i], strlen(argv[i]) + 1);
 		if(!len) {
-			printf("stdio fail\n");
+			print_vm_error("");
 			return CMD_ERROR;
 		}
 	}

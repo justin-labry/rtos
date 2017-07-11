@@ -35,6 +35,16 @@ typedef struct {
 #define NIC_DEFAULT_BUFFER_SIZE		1024
 #define NIC_DEFAULT_BANDWIDTH		1000000000	// 1Gbps
 
+#define EVMID			1
+#define ESTATUS			2
+#define EALLOCMEM		3
+#define EALLOCTHREAD	4
+#define EOVERMAX		5
+#define ENICDEV			6
+#define EVNICMAC		7
+#define EVNICINIT		8
+#define EADDVM			9
+
 /**
  * Virtual Machine
  */
@@ -132,6 +142,16 @@ bool vm_status_set(uint32_t vmid, int status, VM_STATUS_CALLBACK callback, void*
  * @return vm's status
  */
 VMStatus vm_status_get(uint32_t vmid);
+
+/**
+ * Get VM Processors
+ *
+ * @param vmid id
+ * @param processor bit mask
+ *
+ * @return processor count
+ */
+int vm_processors(uint32_t vmid, uint16_t* processors);
 
 ssize_t vm_storage_read(uint32_t vmid, void** buf, size_t offset, size_t size);
 ssize_t vm_storage_write(uint32_t vmid, void* buf, size_t offset, size_t size);
