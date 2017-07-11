@@ -1141,31 +1141,55 @@ bool vm_storage_md5(uint32_t vmid, uint32_t size, uint32_t digest[4]) {
 
 ssize_t vm_stdio(uint32_t vmid, int thread_id, int fd, const char* str, size_t size) {
 	VM* vm = vm_get(vmid);
-	if(!vm) return -1;
-
-	if(thread_id < 0 || thread_id >= vm->core_size)
+	if(!vm) {
+		errno = EVMID;
 		return -1;
+	}
+
+	if(thread_id < 0 || thread_id >= vm->core_size) {
+		errno = ETHREADID;
+		return -1;
+	}
 
 	Core* core = &cores[vm->cores[thread_id]];
-	if(core->status != VM_STATUS_PAUSE && core->status != VM_STATUS_START)
+	if(vm->status != VM_STATUS_START) {
+		errno = ESTATUS;
 		return -1;
+	}
 
 	switch(fd) {
 		case 0:
-			if(core->stdin)
-				return ring_write(core->stdin, *core->stdin_head, core->stdin_tail, core->stdin_size, str, size);
-			else
+			if(core->stdin) {
+				size_t write_size = ring_write(core->stdin, *core->stdin_head, core->stdin_tail, core->stdin_size, str, size);
+				if(write_size < size) errno = EOVERMAX;
+
+				return write_size;
+			} else {
+				errno = EOVERMAX;
 				return -1;
+			}
 		case 1:
-			if(core->stdout)
-				return ring_write(core->stdout, *core->stdout_head, core->stdout_tail, core->stdout_size, str, size);
-			else
+			if(core->stdout) {
+				size_t write_size = ring_write(core->stdout, *core->stdout_head, core->stdout_tail, core->stdout_size, str, size);
+				if(write_size < size) errno = EOVERMAX;
+
+				return write_size;
+			} else {
+				errno = EOVERMAX;
 				return -1;
+			}
 		case 2:
-			if(core->stderr)
-				return ring_write(core->stderr, *core->stderr_head, core->stderr_tail, core->stderr_size, str, size);
-			return -1;
+			if(core->stderr) {
+				size_t write_size = ring_write(core->stderr, *core->stderr_head, core->stderr_tail, core->stderr_size, str, size);
+				if(write_size < size) errno = EOVERMAX;
+
+				return write_size;
+			} else {
+				errno = EOVERMAX;
+				return -1;
+			}
 		default:
+			errno = EOVERMAX;
 			return -1;
 	}
 }
@@ -1202,6 +1226,9 @@ void print_vm_error(const char* msg) {
 			break;
 		case EADDVM:
 			printf("VM Error: Adding VM is fail");
+			break;
+		case ETHREADID:
+			printf("VM Error: Thread ID is wrong");
 			break;
 	}
 
@@ -1578,9 +1605,8 @@ static int cmd_stdio(int argc, char** argv, void(*callback)(char* result, int ex
 	uint32_t vmid = parse_uint32(argv[1]);
 	uint8_t thread_id = parse_uint8(argv[2]);
 	for(int i = 3; i < argc; i++) {
-		printf("%s\n", argv[i]);
 		ssize_t len = vm_stdio(vmid, thread_id, 0, argv[i], strlen(argv[i]) + 1);
-		if(!len) {
+		if(len <= 0) {
 			print_vm_error("");
 			return CMD_ERROR;
 		}

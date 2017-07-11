@@ -44,6 +44,7 @@ typedef struct {
 #define EVNICMAC		7
 #define EVNICINIT		8
 #define EADDVM			9
+#define ETHREADID		10
 
 /**
  * Virtual Machine
