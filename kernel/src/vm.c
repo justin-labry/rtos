@@ -1175,10 +1175,21 @@ static void print_vm_spec(VMSpec* vm_spec) {
 	printf("\tMemory: %dMbs\n", vm_spec->memory_size  / 0x100000);
 	printf("\tStorage: %dMbs\n", vm_spec->storage_size  / 0x100000);
 
-	//Ok
-	for(int i = 0; i < vm_spec->nic_count; i++) {
-		NICSpec* nic_spec = &vm_spec->nics[i];
-		print_nic_spec(nic_spec);
+	if(vm_spec->nic_count) {
+		printf("\tNICS:\n");
+		for(int i = 0; i < vm_spec->nic_count; i++) {
+			NICSpec* nic_spec = &vm_spec->nics[i];
+			printf("\t", nic_spec->name);
+			for(int j = 5; j >= 0; j--) {
+				printf("%02lx", (nic_spec->mac >> (j * 8)) & 0xff);
+				if(j - 1 >= 0)
+					printf(":");
+				else
+					printf(" ");
+			}
+			printf(" Parent %s\n", nic_spec->parent);
+			printf("\t%ldMbps/%ld, %ldMbps/%ld, %ldMBs\n", nic_spec->rx_bandwidth / 1000000, nic_spec->rx_buffer_size, nic_spec->tx_bandwidth / 1000000, nic_spec->rx_buffer_size, nic_spec->pool_size / (1024 * 1024));
+		}
 	}
 
 	if(vm_spec->argc) {
@@ -1192,16 +1203,6 @@ static void print_vm_spec(VMSpec* vm_spec) {
 		}
 	}
 
-	printf("%12s", nic_spec->name);
-	for(int j = 5; j >= 0; j--) {
-		printf("%02lx", (nic_spec->mac >> (j * 8)) & 0xff);
-		if(j - 1 >= 0)
-			printf(":");
-		else
-			printf(" ");
-	}
-	printf(" Parent %s\n", nic_spec->parent);
-	printf("%12s%ldMbps/%ld, %ldMbps/%ld, %ldMBs\n", "", nic_spec->rx_bandwidth / 1000000, nic_spec->rx_buffer_size, nic_spec->tx_bandwidth / 1000000, nic_spec->rx_buffer_size, nic_spec->pool_size / (1024 * 1024));
 }
 
 static int cmd_md5(int argc, char** argv, void(*callback)(char* result, int exit_status)) {
