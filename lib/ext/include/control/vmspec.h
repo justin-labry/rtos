@@ -19,17 +19,16 @@ typedef enum {
 #define NICSPEC_DEVICE_MAC	((uint64_t)1 << 48)
 
 typedef struct {
+	char		name[MAX_NIC_NAME_LEN];
 	uint64_t	mac;
-	char		dev[MAX_NIC_NAME_LEN];
+	char		parent[MAX_NIC_NAME_LEN];
 	uint16_t	budget;
-	uint32_t	input_buffer_size;
-	uint32_t	output_buffer_size;
-	uint32_t	slow_input_buffer_size;
-	uint32_t	slow_output_buffer_size;
+	uint32_t	rx_buffer_size;
+	uint32_t	tx_buffer_size;
 	uint8_t		padding_head;
 	uint8_t		padding_tail;
-	uint64_t	input_bandwidth;
-	uint64_t	output_bandwidth;
+	uint64_t	rx_bandwidth;
+	uint64_t	tx_bandwidth;
 	uint32_t	pool_size;
 } NICSpec;
 

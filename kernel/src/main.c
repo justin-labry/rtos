@@ -45,6 +45,7 @@
 #include "rtc.h"
 #include "packet_dump.h"
 #include "ver.h"
+#include "mount.h"
 //
 
 // Drivers
@@ -244,6 +245,11 @@ void main() {
 		printf("\nInitializing Real Time Clock... \n");
 		if(rtc_init()) {
 			printf("Can't initialize Real Time Clock\n");
+		}
+
+		printf("\nInitializing Mount... \n");
+		if(mount_init()) {
+			printf("Can't initialize Mount\n");
 		}
 
 		printf("\nInitializing Version... \n");

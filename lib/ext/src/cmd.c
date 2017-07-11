@@ -290,7 +290,7 @@ static char* cmd_history_get_later() {
 static void cmd_sort(size_t base) {
 	while(base < __commands_size) {
 		Command command = __commands[base];
-		size_t insert_point = 0;
+		ssize_t insert_point = 0;
 
 		// Find where to insert the command
 		for(int i = base-1; i >= 0; --i) {
@@ -383,11 +383,26 @@ int cmd_exec(char* line, void(*callback)(char* result, int exit_status)) {
 	}
 
 	Command* cmd = cmd_get(argc, argv);
-	int exit_status = CMD_STATUS_NOT_FOUND;
 	if(cmd) {
 		cmd_result[0] = '\0';
-		exit_status = cmd->func(argc, argv, callback);
+		int exit_status = cmd->func(argc, argv, callback);
+		switch(exit_status) {
+			case CMD_WRONG_NUMBER_OF_ARGS:
+				printf("Error: Commands wrong number of arguments\n");
+				break;
+			case CMD_WRONG_TYPE_OF_ARGS:
+				printf("Error: Commands wrong type of arguments\n");
+				break;
+			case CMD_WRONG_OPTIONS:
+				printf("Error: Commands wrong options\n");
+				break;
+			case CMD_ERROR:
+				printf("Error\n");
+				break;
+		}
+
+		if(exit_status && cmd->args) printf("%s\n", cmd->args);
 	}
 
-	return exit_status;
+	return 0;
 }

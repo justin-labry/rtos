@@ -36,35 +36,8 @@ static void vm_create_handler(RPC* rpc, VMSpec* vm_spec, void* context, void(*ca
 }
 
 static void vm_get_handler(RPC* rpc, uint32_t vmid, void* context, void(*callback)(RPC* rpc, VMSpec* vm)) {
-	VM* vm = vm_get(vmid);
-	if(!vm) callback(rpc, NULL);
-
 	VMSpec spec = {};
-	NICSpec ns[VMSPEC_MAX_NIC_COUNT] = {};
-	spec.id = vm->id;
-	spec.core_size = vm->core_size;
-	spec.memory_size = vm->memory.count * VM_MEMORY_SIZE_ALIGN / 0x100000;
-	spec.storage_size = vm->storage.count * VM_STORAGE_SIZE_ALIGN / 0x100000;
-	spec.nic_count = vm->nic_count;
-	spec.nics = ns;
-	for(int i = 0; i < spec.nic_count; ++i) {
-		VNIC* vnic = vm->nics[i];
-		NICSpec* nicspec = &spec.nics[i];
-		nicspec->mac = vnic->mac;
-		strcpy(nicspec->dev, vnic->parent);
-		nicspec->budget = vnic->budget;
-		nicspec->input_buffer_size = vnic->rx.size;
-		nicspec->output_buffer_size = vnic->tx.size;
-		nicspec->slow_input_buffer_size = vnic->srx.size;
-		nicspec->slow_output_buffer_size = vnic->stx.size;
-		nicspec->padding_head = vnic->padding_head;
-		nicspec->padding_tail = vnic->padding_tail;
-		nicspec->input_bandwidth = vnic->rx_bandwidth;
-		nicspec->output_bandwidth = vnic->tx_bandwidth;
-		nicspec->pool_size = vnic->nic_size;
-	}
-	spec.argc = vm->argc;
-	spec.argv = vm->argv;
+	vm_get_spec(&spec);
 
 	callback(rpc, &spec);
 }

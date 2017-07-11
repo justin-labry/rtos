@@ -69,6 +69,15 @@ int vm_init();
 uint32_t vm_create(VMSpec* vm_spec);
 
 /**
+ * Get VM Spec
+ *
+ * @param vm_spec for get properties of new VM
+ *
+ * @return true for success, false for failure
+ */
+bool vm_get_spec(VMSpec* vm_spec);
+
+/**
  * Destroy VM
  *
  * @param vmid id
@@ -123,15 +132,6 @@ bool vm_status_set(uint32_t vmid, int status, VM_STATUS_CALLBACK callback, void*
  * @return vm's status
  */
 VMStatus vm_status_get(uint32_t vmid);
-
-/**
- * Get VM instance by id
- *
- * @param vmid id
- *
- * @return vm object
- */
-VM* vm_get(uint32_t vmid);
 
 ssize_t vm_storage_read(uint32_t vmid, void** buf, size_t offset, size_t size);
 ssize_t vm_storage_write(uint32_t vmid, void* buf, size_t offset, size_t size);

@@ -219,11 +219,11 @@ static int write_vm(RPC* rpc, VMSpec* vm) {
 	WRITE(write_uint16(rpc, vm->nic_count));
 	for(int i = 0; i < vm->nic_count; i++) {
 		WRITE(write_uint64(rpc, vm->nics[i].mac));
-		WRITE(write_string(rpc, vm->nics[i].dev));
-		WRITE(write_uint32(rpc, vm->nics[i].input_buffer_size));
-		WRITE(write_uint32(rpc, vm->nics[i].output_buffer_size));
-		WRITE(write_uint64(rpc, vm->nics[i].input_bandwidth));
-		WRITE(write_uint64(rpc, vm->nics[i].output_bandwidth));
+		WRITE(write_string(rpc, vm->nics[i].parent));
+		WRITE(write_uint32(rpc, vm->nics[i].rx_buffer_size));
+		WRITE(write_uint32(rpc, vm->nics[i].tx_buffer_size));
+		WRITE(write_uint64(rpc, vm->nics[i].rx_bandwidth));
+		WRITE(write_uint64(rpc, vm->nics[i].tx_bandwidth));
 		WRITE(write_uint8(rpc, vm->nics[i].padding_head));
 		WRITE(write_uint8(rpc, vm->nics[i].padding_tail));
 		WRITE(write_uint32(rpc, vm->nics[i].pool_size));
@@ -278,12 +278,12 @@ static int read_vm(RPC* rpc, VMSpec** vm2) {
 			char* ch;
 			uint16_t len2;
 			READ2(read_string(rpc, &ch, &len2), failed);
-			memcpy(vm->nics[i].dev, ch, len2);
+			memcpy(vm->nics[i].parent, ch, len2);
 
-			READ2(read_uint32(rpc, &vm->nics[i].input_buffer_size), failed);
-			READ2(read_uint32(rpc, &vm->nics[i].output_buffer_size), failed);
-			READ2(read_uint64(rpc, &vm->nics[i].input_bandwidth), failed);
-			READ2(read_uint64(rpc, &vm->nics[i].output_bandwidth), failed);
+			READ2(read_uint32(rpc, &vm->nics[i].rx_buffer_size), failed);
+			READ2(read_uint32(rpc, &vm->nics[i].tx_buffer_size), failed);
+			READ2(read_uint64(rpc, &vm->nics[i].rx_bandwidth), failed);
+			READ2(read_uint64(rpc, &vm->nics[i].tx_bandwidth), failed);
 			READ2(read_uint8(rpc, &vm->nics[i].padding_head), failed);
 			READ2(read_uint8(rpc, &vm->nics[i].padding_tail), failed);
 			READ2(read_uint32(rpc, &vm->nics[i].pool_size), failed);
@@ -1253,11 +1253,11 @@ void rpc_vm_dump(VMSpec* vm) {
 	printf("storage_size = %x\n", vm->storage_size);
 	for(int i = 0; i < vm->nic_count; i++) {
 		printf("\tnic[%d].mac = %lx\n", i, vm->nics[i].mac);
-		printf("\tnic[%d].dev = %s\n", i, vm->nics[i].dev);
-		printf("\tnic[%d].input_buffer_size = %d\n", i, vm->nics[i].input_buffer_size);
-		printf("\tnic[%d].output_buffer_size = %d\n", i, vm->nics[i].output_buffer_size);
-		printf("\tnic[%d].input_bandwidth = %lx\n", i, vm->nics[i].input_bandwidth);
-		printf("\tnic[%d].output_bandwidth = %lx\n", i, vm->nics[i].output_bandwidth);
+		printf("\tnic[%d].dev = %s\n", i, vm->nics[i].parent);
+		printf("\tnic[%d].rx_buffer_size = %d\n", i, vm->nics[i].rx_buffer_size);
+		printf("\tnic[%d].tx_buffer_size = %d\n", i, vm->nics[i].tx_buffer_size);
+		printf("\tnic[%d].rx_bandwidth = %lx\n", i, vm->nics[i].rx_bandwidth);
+		printf("\tnic[%d].tx_bandwidth = %lx\n", i, vm->nics[i].tx_bandwidth);
 		printf("\tnic[%d].pool_size = %x\n", i, vm->nics[i].pool_size);
 	}
 	printf("argv: ");

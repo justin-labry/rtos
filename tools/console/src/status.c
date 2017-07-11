@@ -50,7 +50,9 @@ static int status_get(int argc, char** argv) {
 	return 0;
 }
 
+void* __attribute__((weak)) malloc(size_t size);
 int main(int argc, char *argv[]) {
+	malloc(1024);
 	rpc_init();
 	RPCSession* session = rpc_session();
 	if(!session) {

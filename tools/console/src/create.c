@@ -82,11 +82,11 @@ static int vm_create(int argc, char* argv[]) {
 				// Default NIC configuration
 				NICSpec* nic = &vm.nics[vm.nic_count];
 				nic->mac = 0;
-				strcpy(nic->dev, "eth0");
-				nic->input_buffer_size = 1024;
-				nic->output_buffer_size = 1024;
-				nic->input_bandwidth = 1000000000; /* 1 GB */
-				nic->output_bandwidth = 1000000000; /* 1 GB */
+				strcpy(nic->parent, "eth0");
+				nic->rx_buffer_size = 1024;
+				nic->tx_buffer_size = 1024;
+				nic->rx_bandwidth = 1000000000; /* 1 GB */
+				nic->tx_bandwidth = 1000000000; /* 1 GB */
 				nic->padding_head = 32;
 				nic->padding_tail = 32;
 				nic->pool_size = 0x400000; /* 4 MB */
@@ -99,19 +99,19 @@ static int vm_create(int argc, char* argv[]) {
 							nic->mac = strtoll(value, NULL, 16);
 							break;
 						case DEV:
-							strcpy(nic->dev, value);
+							strcpy(nic->parent, value);
 							break;
 						case IBUF:
-							nic->input_buffer_size = atol(value);
+							nic->rx_buffer_size = atol(value);
 							break;
 						case OBUF:
-							nic->output_buffer_size = atol(value);
+							nic->tx_buffer_size = atol(value);
 							break;
 						case IBAND:
-							nic->input_bandwidth = atoll(value);
+							nic->rx_bandwidth = atoll(value);
 							break;
 						case OBAND:
-							nic->output_bandwidth = atoll(value);
+							nic->tx_bandwidth = atoll(value);
 							break;
 						case HPAD:
 							nic->padding_head = atoi(value);

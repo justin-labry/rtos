@@ -3,13 +3,19 @@
 
 #include <util/fifo.h>
 
-#define CMD_MAX				64
-#define CMD_MAX_ARGC		256
-#define CMD_RESULT_SIZE		4096
+#define CMD_MAX					64
+#define CMD_MAX_ARGC			256
+#define CMD_RESULT_SIZE			4096
 #define CMD_STATUS_WRONG_NUMBER -1000
 #define CMD_STATUS_NOT_FOUND	-1001
 #define CMD_VARIABLE_NOT_FOUND	-2000
-#define	CMD_HISTORY_SIZE	30
+#define	CMD_HISTORY_SIZE		30
+
+#define CMD_SUCCESS					0
+#define CMD_WRONG_NUMBER_OF_ARGS	-1
+#define CMD_WRONG_TYPE_OF_ARGS		-2
+#define CMD_WRONG_OPTIONS			-3
+#define CMD_ERROR					-4
 
 #define NEXT_ARGUMENTS()			\
 	i++;					\
