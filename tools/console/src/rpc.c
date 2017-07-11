@@ -10,7 +10,6 @@
 #include <arpa/inet.h>
 #include <signal.h>
 #include <unistd.h>
-#include <_malloc.h>
 
 #include "rpc.h"
 
@@ -242,7 +241,5 @@ RPCSession* rpc_session() {
 	return session;
 }
 
-static char buf[0x200000];
 void rpc_init() {
-	__malloc_init(buf, 0x200000);
 }
