@@ -357,14 +357,14 @@ void cmd_unregister(Command* command) {
 
 	// Find the index of the given command object
 	for(size_t i = 0; i < __commands_size; ++i)
-		if(strcmp(__commands[i].name, command->name) == 0)
-			index = (ssize_t)i;
-	if(index == -1)
-		return;
+		if(strcmp(__commands[i].name, command->name) == 0) index = (ssize_t)i;
+
+	if(index == -1) return;
 
 	// Pack the commands array
 	for(size_t i = (size_t)index; i < __commands_size-1; ++i)
 		__commands[i] = __commands[i+1];
+
 	__commands_size -= 1;
 }
 
@@ -373,14 +373,11 @@ int cmd_exec(char* line, void(*callback)(char* result, int exit_status)) {
 	char* argv[CMD_MAX_ARGC];
 
 	argc = cmd_parse_line(line, argv);
-	if(argc == 0 || argv[0][0] == '#')
-		return 0;
+	if(argc == 0 || argv[0][0] == '#') return 0;
 
 	cmd_parse_var(&argc, argv);
 
-	if(cmd_parse_arg(argc, argv) == false) {
-		return CMD_VARIABLE_NOT_FOUND;
-	}
+	if(cmd_parse_arg(argc, argv) == false) return CMD_VARIABLE_NOT_FOUND;
 
 	Command* cmd = cmd_get(argc, argv);
 	if(cmd) {
@@ -397,12 +394,12 @@ int cmd_exec(char* line, void(*callback)(char* result, int exit_status)) {
 				printf("Error: Commands wrong options\n");
 				break;
 			case CMD_ERROR:
-				printf("Error\n");
 				break;
 		}
 
 		if(exit_status && cmd->args) printf("%s\n", cmd->args);
-	}
+	} else
+		printf("Error: Command not found\n");
 
 	return 0;
 }
