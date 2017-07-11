@@ -802,7 +802,7 @@ fail:
 }
 
 bool vm_destroy(uint32_t vmid) {
-	VM* vm = vm_remove(vmid);
+	VM* vm = vm_get(vmid);
 	if(!vm) {
 		errno = EVMID;
 		return false;
@@ -823,6 +823,7 @@ bool vm_destroy(uint32_t vmid) {
 	}
 	printf("]\n");
 
+	vm_remove(vmid);
 	vm_delete(vm, -1);
 
 	return true;
