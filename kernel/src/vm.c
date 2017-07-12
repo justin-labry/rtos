@@ -639,8 +639,8 @@ uint32_t vm_create(VMSpec* vm_spec) {
 			}
 
 			uint64_t mac = nics[i].mac;
-			if(mac & ~0xffffffffffffL) {
-				errno = EOVERMAX;
+			if(mac & ~0xfeffffffffffL) {
+				errno = EVNICMAC;
 				goto fail;
 			}
 
@@ -655,17 +655,30 @@ uint32_t vm_create(VMSpec* vm_spec) {
 				goto fail;
 			}
 
+			nics[i].budget = nics[i].budget ? : NIC_DEFAULT_BUDGET_SIZE;
+			nics[i].pool_size = nics[i].pool_size ? (nics[i].pool_size + VNIC_POOL_SIZE_ALIGN - 1) & ~(VNIC_POOL_SIZE_ALIGN - 1) : NIC_DEFAULT_POOL_SIZE;
+			if(nics[i].pool_size > VNIC_MAX_POOL_SIZE) {
+				errno = EOVERMAX;
+				goto fail;
+			}
+			nics[i].rx_bandwidth = nics[i].rx_bandwidth ? : NIC_DEFAULT_BANDWIDTH;
+			nics[i].tx_bandwidth = nics[i].tx_bandwidth ? : NIC_DEFAULT_BANDWIDTH;
+			nics[i].padding_head = nics[i].padding_head ? : NIC_DEFAULT_PADDING_SIZE;
+			nics[i].padding_tail = nics[i].padding_tail ? : NIC_DEFAULT_PADDING_SIZE;
+			nics[i].rx_buffer_size = nics[i].rx_buffer_size ? : NIC_DEFAULT_BUFFER_SIZE;
+			nics[i].tx_buffer_size = nics[i].tx_buffer_size ? : NIC_DEFAULT_BUFFER_SIZE;
+
 			uint64_t attrs[] = {
 				VNIC_MAC, mac,
 				VNIC_DEV, (uint64_t)nic_dev->name,
-				VNIC_BUDGET, nics[i].budget ? : NIC_DEFAULT_BUDGET_SIZE,
-				VNIC_POOL_SIZE, nics[i].pool_size ? : NIC_DEFAULT_POOL_SIZE,
-				VNIC_RX_BANDWIDTH, nics[i].rx_bandwidth ? : NIC_DEFAULT_BANDWIDTH,
-				VNIC_TX_BANDWIDTH, nics[i].tx_bandwidth ? : NIC_DEFAULT_BANDWIDTH,
-				VNIC_PADDING_HEAD, nics[i].padding_head ? : NIC_DEFAULT_PADDING_SIZE,
-				VNIC_PADDING_TAIL, nics[i].padding_tail ? : NIC_DEFAULT_PADDING_SIZE,
-				VNIC_RX_QUEUE_SIZE, nics[i].rx_buffer_size ? : NIC_DEFAULT_BUFFER_SIZE,
-				VNIC_TX_QUEUE_SIZE, nics[i].tx_buffer_size ? : NIC_DEFAULT_BUFFER_SIZE,
+				VNIC_BUDGET, nics[i].budget,
+				VNIC_POOL_SIZE, nics[i].pool_size,
+				VNIC_RX_BANDWIDTH, nics[i].rx_bandwidth,
+				VNIC_TX_BANDWIDTH, nics[i].tx_bandwidth,
+				VNIC_PADDING_HEAD, nics[i].padding_head,
+				VNIC_PADDING_TAIL, nics[i].padding_tail,
+				VNIC_RX_QUEUE_SIZE, nics[i].rx_buffer_size,
+				VNIC_TX_QUEUE_SIZE, nics[i].tx_buffer_size,
 				VNIC_NONE
 			};
 
@@ -679,8 +692,8 @@ uint32_t vm_create(VMSpec* vm_spec) {
 			char name_buf[32];
 			sprintf(name_buf, "v%deth%d", vm->id, i);
 			strncpy(vnic->name, name_buf, _IFNAMSIZ);
-			vnic->nic_size = nics[i].pool_size ? : NIC_DEFAULT_POOL_SIZE;
-			vnic->nic = bmalloc(((nics[i].pool_size ? : NIC_DEFAULT_POOL_SIZE) + 0x200000 - 1) / 0x200000);
+			vnic->nic_size = nics[i].pool_size;
+			vnic->nic = bmalloc(nics[i].pool_size / 0x200000);
 			if(!vnic->nic) {
 				errno = EALLOCMEM;
 				goto fail;

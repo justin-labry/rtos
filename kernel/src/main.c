@@ -124,9 +124,7 @@ void main() {
 	uint64_t vga_buffer = (uint64_t)VGA_BUFFER_START;
 	stdio_init(apic_id, (void*)vga_buffer,  VGA_BUFFER_END - VGA_BUFFER_START);
 
-	printf("\nInitializing malloc area...\n");
 	if(malloc_init()) goto error;
-
 
 	mp_sync();	// Barrier #1
 	if(apic_id == 0) {
