@@ -103,7 +103,6 @@ static void storage_download_handler(RPC* rpc, uint32_t vmid, uint64_t download_
 }
 
 static void storage_upload_handler(RPC* rpc, uint32_t vmid, uint32_t offset, void* buf, int32_t size, void* context, void(*callback)(RPC* rpc, int32_t size)) {
-	static int total_size = 0;
 	if(size < 0) {
 		callback(rpc, size);
 	} else {
@@ -119,18 +118,15 @@ static void storage_upload_handler(RPC* rpc, uint32_t vmid, uint32_t offset, voi
 			printf(". Aborted: %d\n", size);
 			callback(rpc, size);
 		} else {
-			size = vm_storage_write(vmid, buf, offset, size);
-			callback(rpc, size);
+			int32_t write_size = vm_storage_write(vmid, buf, offset, size);
+			callback(rpc, write_size);
 
-			if(size > 0) {
+			if(write_size > 0) {
 				printf(".");
-				total_size += size;
-			} else if(size == 0) {
-				printf(". Done. Total size: %d\n", total_size);
-				total_size = 0;
-			} else if(size < 0) {
-				printf(". Error: %d\n", size);
-				total_size = 0;
+			} else if(write_size == 0) {
+				printf(". Done. Total size: %d\n", offset + size);
+			} else if(write_size < 0) {
+				printf(". Error: %d\n", write_size);
 			}
 		}
 	}

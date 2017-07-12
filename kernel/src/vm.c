@@ -1064,41 +1064,30 @@ ssize_t vm_storage_write(uint32_t vmid, void* buf, size_t offset, size_t size) {
 
 	if(!size) return 0;
 
+	//Checking buffer size
 	if((uint64_t)offset + size > (uint64_t)vm->storage.count * VM_STORAGE_SIZE_ALIGN) {
 		errno = EOVERMAX;
 		return -1;
 	}
 
-	uint32_t index = offset / VM_STORAGE_SIZE_ALIGN;
-	if(index >= vm->storage.count) {
-		errno = EOVERMAX;
-		return -1;
-	}
-
 	size_t _size = size;
-	offset %= VM_STORAGE_SIZE_ALIGN;
-	for(; index < vm->storage.count; index++) {
-		if(offset + _size > VM_STORAGE_SIZE_ALIGN) {
-			size_t write_size = VM_STORAGE_SIZE_ALIGN - offset;
-			memcpy(vm->storage.blocks[index] + offset, buf, write_size);
+	uint32_t index = offset / VM_STORAGE_SIZE_ALIGN;
+	size_t _offset = offset % VM_STORAGE_SIZE_ALIGN;
+	for(; index < vm->storage.count && _size; index++) {
+		if(_offset + _size > VM_STORAGE_SIZE_ALIGN) {
+			size_t write_size = VM_STORAGE_SIZE_ALIGN - _offset;
+			memcpy(vm->storage.blocks[index] + _offset, buf, write_size);
 			_size -= write_size;
 			buf += write_size;
 		} else {
-			memcpy(vm->storage.blocks[index] + offset, buf, _size);
+			memcpy(vm->storage.blocks[index] + _offset, buf, _size);
 			_size = 0;
 		}
 
-		if(_size == 0) {
-			vm->used_size += size;
-			break;
-		}
-		offset = 0;
+		_offset = 0;
 	}
 
-	if(_size != 0) {
-		errno = EOVERMAX;
-		return -1;
-	}
+	vm->used_size = offset + size;
 
 	return size;
 }
