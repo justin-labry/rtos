@@ -558,6 +558,10 @@ uint32_t vm_create(VMSpec* vm_spec) {
 
 	// Allocate core
 	vm->core_size = vm_spec->core_size;
+	if(!vm->core_size) {
+		errno = EALLOCTHREAD;
+		goto fail;
+	}
 
 	int j = 0;
 	for(int i = 1; i < MP_MAX_CORE_COUNT; i++) {
