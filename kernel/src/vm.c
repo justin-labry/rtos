@@ -559,7 +559,7 @@ uint32_t vm_create(VMSpec* vm_spec) {
 	// Allocate core
 	vm->core_size = vm_spec->core_size;
 	if(!vm->core_size) {
-		errno = EALLOCTHREAD;
+		errno = EUNDERMIN;
 		goto fail;
 	}
 
@@ -581,15 +581,14 @@ uint32_t vm_create(VMSpec* vm_spec) {
 	}
 
 	// Allocate memory
-	uint32_t memory_size = vm_spec->memory_size;
-	if(!memory_size) {
-		errno = EALLOCMEM;
+	uint32_t memory_size = memory_size = (vm_spec->memory_size + (VM_MEMORY_SIZE_ALIGN - 1)) & ~(VM_MEMORY_SIZE_ALIGN - 1);
+	if(memory_size > VM_MAX_MEMORY_SIZE) {
+		errno = EOVERMAX;
 		goto fail;
 	}
 
-	memory_size = (memory_size + (VM_MEMORY_SIZE_ALIGN - 1)) & ~(VM_MEMORY_SIZE_ALIGN - 1);
-	if(memory_size > VM_MAX_MEMORY_SIZE) {
-		errno = EOVERMAX;
+	if(memory_size < VM_MIN_MEMORY_SIZE) {
+		errno = EUNDERMIN;
 		goto fail;
 	}
 
@@ -605,15 +604,14 @@ uint32_t vm_create(VMSpec* vm_spec) {
 	}
 
 	// Allocate storage
-	uint32_t storage_size = vm_spec->storage_size;
-	if(!storage_size) {
-		errno = EALLOCMEM;
+	uint32_t storage_size = (vm_spec->storage_size + (VM_STORAGE_SIZE_ALIGN - 1)) & ~(VM_STORAGE_SIZE_ALIGN - 1);
+	if(storage_size > VM_MAX_STORAGE_SIZE) {
+		errno = EOVERMAX;
 		goto fail;
 	}
 
-	storage_size = (storage_size + (VM_STORAGE_SIZE_ALIGN - 1)) & ~(VM_STORAGE_SIZE_ALIGN - 1);
-	if(storage_size > VM_MAX_STORAGE_SIZE) {
-		errno = EOVERMAX;
+	if(storage_size < VM_MIN_STORAGE_SIZE) {
+		errno = EUNDERMIN;
 		goto fail;
 	}
 
@@ -1139,31 +1137,34 @@ void vm_stdio_handler(VM_STDIO_CALLBACK callback) {
 void print_vm_error(const char* msg) {
 	switch(errno) {
 		case EVMID: 
-			printf("VM Error: VM ID is wrong");
+			printf("VM Error: The VM ID is invalid");
 			break;
 		case ESTATUS:
-			printf("VM Error: VM status is wrong");
+			printf("VM Error: The VM status is invalid");
 			break;
 		case EALLOCMEM:
-			printf("VM Error: Allocating memory is fail");
+			printf("VM Error: Memory allocation failure");
 			break;
 		case EALLOCTHREAD:
-			printf("VM Error: Allocating thread is fail");
+			printf("VM Error: Thread allocation failure");
 			break;
 		case EOVERMAX:
-			printf("VM Error: Over limit");
+			printf("VM Error: Beyond the maximum limit");
+			break;
+		case EUNDERMIN:
+			printf("VM Error: Does not meet minimum requirements");
 			break;
 		case ENICDEV:
 			printf("VM Error: Can't found NIC device");
 			break;
 		case EVNICMAC:
-			printf("VM Error: MAC address is wrong");
+			printf("VM Error: MAC address is invalid");
 			break;
 		case EVNICINIT:
-			printf("VM Error: Initilaizing vnic is fail");
+			printf("VM Error: VNIC initialization failed");
 			break;
 		case EADDVM:
-			printf("VM Error: Adding VM is fail");
+			printf("VM Error: Failed to add VM");
 			break;
 		case ETHREADID:
 			printf("VM Error: Thread ID is wrong");
