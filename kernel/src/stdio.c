@@ -26,6 +26,11 @@ volatile size_t __stdout_head;
 volatile size_t __stdout_tail;
 size_t __stdout_size = BUFFER_SIZE;
 
+char* __stdout_ptr = __stdout;
+volatile size_t* __stdout_head_ptr = &__stdout_head;
+volatile size_t* __stdout_tail_ptr = &__stdout_tail;
+size_t* __stdout_size_ptr = &__stdout_size;
+
 char __stderr[BUFFER_SIZE];
 volatile size_t __stderr_head;
 volatile size_t __stderr_tail;

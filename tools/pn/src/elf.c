@@ -94,6 +94,11 @@ static int kernel_symbols_init() {
 		{ &LOCAL_MALLOC_END, "LOCAL_MALLOC_END" },
 
 		{ &SHARED_ADDR, "SHARED_ADDR" },
+
+		{ &__stdout_ptr, "__stdout" },
+		{ &__stdout_head_ptr, "__stdout_head" },
+		{ &__stdout_tail_ptr, "__stdout_tail" },
+		{ &__stdout_size_ptr, "__stdout_size" },
 	};
 
 	int count = sizeof(mmap_symbols) / (sizeof(char*) * 2);

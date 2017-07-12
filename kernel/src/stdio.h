@@ -19,6 +19,11 @@ extern volatile size_t __stdout_head;
 extern volatile size_t __stdout_tail;
 extern size_t __stdout_size;
 
+extern char* __stdout_ptr;
+extern volatile size_t* __stdout_head_ptr;
+extern volatile size_t* __stdout_tail_ptr;
+extern size_t* __stdout_size_ptr;
+
 extern char __stderr[];
 extern volatile size_t __stderr_head;
 extern volatile size_t __stderr_tail;

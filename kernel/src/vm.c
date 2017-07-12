@@ -467,10 +467,10 @@ static bool vm_loop(void* context) {
 		if(cores[i].status == VM_STATUS_INVALID)
 			continue;
 
-		char* buffer = (char*)MP_CORE(VIRTUAL_TO_PHYSICAL(__stdout), i);
-		volatile size_t* head = (size_t*)MP_CORE(VIRTUAL_TO_PHYSICAL(&__stdout_head), i);
-		volatile size_t* tail = (size_t*)MP_CORE(VIRTUAL_TO_PHYSICAL(&__stdout_tail), i);
-		size_t size = *(size_t*)MP_CORE(VIRTUAL_TO_PHYSICAL(&__stdout_size), i);
+		char* buffer = (char*)MP_CORE(VIRTUAL_TO_PHYSICAL(__stdout_ptr), i);
+		volatile size_t* head = (size_t*)MP_CORE(VIRTUAL_TO_PHYSICAL(__stdout_head_ptr), i);
+		volatile size_t* tail = (size_t*)MP_CORE(VIRTUAL_TO_PHYSICAL(__stdout_tail_ptr), i);
+		size_t size = *(size_t*)MP_CORE(VIRTUAL_TO_PHYSICAL(__stdout_size_ptr), i);
 
 		while(*head != *tail) {
 			stdio_dump(mp_apic_id_to_processor_id(i), 1, buffer, head, tail, size);

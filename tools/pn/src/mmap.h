@@ -7,6 +7,7 @@
  * described in PacketNgin linker script (kernel/build/elf_x86_64.ld)
  **/
 
+#include <unistd.h>
 #include <stdint.h>
 
 extern uint64_t PHYSICAL_OFFSET;
@@ -71,6 +72,11 @@ extern char* LOCAL_MALLOC_START;
 extern char* LOCAL_MALLOC_END;
 
 extern char* SHARED_ADDR;
+
+extern char* __stdout_ptr;
+extern volatile size_t* __stdout_head_ptr;
+extern volatile size_t* __stdout_tail_ptr;
+extern size_t* __stdout_size_ptr;
 
 /*
  * Kernel data area (8M ~ 38M)

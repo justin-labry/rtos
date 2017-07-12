@@ -1,3 +1,4 @@
+#include <unistd.h>
 #include <stdint.h>
 
 uint64_t PHYSICAL_OFFSET;
@@ -50,3 +51,8 @@ char* LOCAL_MALLOC_START;
 char* LOCAL_MALLOC_END;
 
 char* SHARED_ADDR;
+
+char* __stdout_ptr;
+volatile size_t* __stdout_head_ptr;
+volatile size_t* __stdout_tail_ptr;
+size_t* __stdout_size_ptr;
