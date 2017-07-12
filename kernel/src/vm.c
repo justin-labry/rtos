@@ -419,8 +419,9 @@ static void stdio_dump(int coreno, int fd, char* buffer, volatile size_t* head, 
 	if(*head == *tail)
 		return;
 
-	char header[12] = "[ Core 00 ]";
-	header[8] += coreno;
+	char header[] = "[ Core 00 ]";
+	header[7] += coreno / 10;
+	header[8] += coreno % 10;
 
 	printf("\n%s ", header);
 	int length = *tail - *head;
@@ -429,94 +430,10 @@ static void stdio_dump(int coreno, int fd, char* buffer, volatile size_t* head, 
 			if(i != length - 1)
 				printf("%s ", header);
 		}
-
 		putchar(buffer[i]);
 	}
 
 	*head = *tail;
-
-/*
- *        int header_len = strlen(header);
- *        int body_len = 80 - header_len;
- *
- *        char* strchrn(const char* s, const char* e, int c) {
- *                char* ch = (char*)s;
- *
- *                while(*ch != c && *ch != '\0' && ch < e)
- *                        ch++;
- *
- *                return ch < e && *ch == c ? ch: NULL;
- *        }
- *
- *        char* dump_lines(char* h, char* e) {
- *                char* t = strchrn(h, e, '\n');
- *                while(t) {
- *                        // Skip newline and null charater
- *                        t += 2;
- *                        while(t - h > body_len) {
- *                                write1(header, header_len);
- *                                write1(h, body_len);
- *
- *                                h += body_len;
- *                        }
- *
- *                        write1(header, header_len);
- *                        write1(h, t - h);
- *
- *                        if(t >= e)
- *                                return NULL;
- *
- *                        h = t;
- *                        t = strchrn(h, e, '\n');
- *                }
- *
- *                while(e - h > body_len) {
- *                        write1(header, header_len);
- *                        write1(h, body_len);
- *
- *                        h += body_len;
- *                }
- *
- *                return h < e ? h : NULL;
- *        }
- *
- *        char* h = buffer + *head;
- *        char* e = buffer + *tail;
- *        if(*head > *tail) {
- *                h = dump_lines(h, buffer + size);
- *                if(h) {
- *                        int len1 = buffer + size - h;
- *                        write1(header, header_len);
- *                        write1(h, len1);
- *
- *                        size_t len2 = body_len - len1;
- *                        if(len2 > *tail)
- *                                len2 = *tail;
- *
- *                        char* t = strchrn(h, buffer + len2, '\n');
- *                        if(t) {
- *                                t++;
- *                                write1(h, t - h);
- *                                h = t;
- *                        } else {
- *                                write1(buffer, len2);
- *                                write1("\n", 1);
- *                                h = buffer + len2;
- *                        }
- *                } else {
- *                        h = buffer;
- *                }
- *        }
- *
- *        h = dump_lines(h, e);
- *        if(h) {
- *                //write1(header, header_len);
- *                write1(h, e - h);
- *                //write1("\n", 1);
- *        }
- *
- *        *head = *tail;
- */
 }
 
 static bool vm_loop(void* context) {
