@@ -56,7 +56,7 @@ int main(int argc, char** argv) {
 	thread_barrior();
 	
 	if(thread_id() == 0) {
-		gdestroy(argc, argv);
+		gdestroy();
 	}
 	
 	return 0;
