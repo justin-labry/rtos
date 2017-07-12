@@ -105,14 +105,11 @@ sdk: loader/loader.bin kernel.bin initrd.img system.img
 
 gdb:
 	@echo "Run GDB session connected to PacketNgin RTOS"
-	# target remote localhost:1234
-	# set architecture i386:x86-64
-	# file kernel/kernel.elf
 	gdb --eval-command="target remote localhost:1234; set architecture i386:x86-64; file kernel/kernel.elf"
 
-dis: kernel/build/kernel.elf
+dis: kernel/kernel.elf
 	@echo "Dissable PacketNgin kernel image"
-	objdump -d kernel/build/kernel.elf > kernel.dis && vi kernel.dis
+	objdump -d kernel/kernel.elf > kernel.dis && vi kernel.dis
 
 clean: Build.make
 	@${MAKE} --no-print-directory -C . -f Build.make clean
