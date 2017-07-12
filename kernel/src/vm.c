@@ -26,6 +26,7 @@
 #include "mmap.h"
 #include "driver/nicdev.h"
 #include "shell.h"
+#include "page.h"
 
 static uint32_t	last_vmid = 1;
 // FIXME: change to static
@@ -418,7 +419,8 @@ static void stdio_dump(int coreno, int fd, char* buffer, volatile size_t* head, 
 	if(*head == *tail)
 		return;
 
-	char header[12] = "[ Core 01 ]";
+	char header[12] = "[ Core 00 ]";
+	header[8] += coreno;
 
 	printf("\n%s ", header);
 	int length = *tail - *head;
@@ -548,10 +550,10 @@ static bool vm_loop(void* context) {
 		if(cores[i].status == VM_STATUS_INVALID)
 			continue;
 
-		char* buffer = (char*)MP_CORE(*__stdout, i);
-		volatile size_t* head = (size_t*)MP_CORE(__stdout_head, i);
-		volatile size_t* tail = (size_t*)MP_CORE(__stdout_tail, i);
-		size_t size = *(size_t*)MP_CORE(__stdout_size, i);
+		char* buffer = (char*)MP_CORE(VIRTUAL_TO_PHYSICAL(__stdout), i);
+		volatile size_t* head = (size_t*)MP_CORE(VIRTUAL_TO_PHYSICAL(&__stdout_head), i);
+		volatile size_t* tail = (size_t*)MP_CORE(VIRTUAL_TO_PHYSICAL(&__stdout_tail), i);
+		size_t size = *(size_t*)MP_CORE(VIRTUAL_TO_PHYSICAL(&__stdout_size), i);
 
 		while(*head != *tail) {
 			stdio_dump(mp_apic_id_to_processor_id(i), 1, buffer, head, tail, size);
@@ -1231,20 +1233,10 @@ void print_vm_error(const char* msg) {
 }
 ////
 
-static void print_nic_spec_metadata(NICSpec* nic_spec) {
-// 	printf("%12sRX packets:%d dropped:%d\n", "", vnic->input_packets, vnic->input_drop_packets);
-// 	printf("%12sTX packets:%d dropped:%d\n", "", vnic->output_packets, vnic->output_drop_packets);
-// 
-// 	printf("%12sRX bytes:%lu ", "", vnic->input_bytes);
-// 	print_byte_size(vnic->input_bytes);
-// 	printf("  TX bytes:%lu ", vnic->output_bytes);
-// 	print_byte_size(vnic->output_bytes);
-// 	printf("\n");
-// 	printf("%12sHead Padding:%d Tail Padding:%d\n", "",vnic->padding_head, vnic->padding_tail);
-}
-
-static void print_nic_spec(NICSpec* nic_spec) {
-	printf("%12s", nic_spec->name);
+static void print_nic_spec(NICSpec* nic_spec, char* indent) {
+	printf("%s%s:\n", indent ? : "", nic_spec->name);
+	printf("%s    Parent: %s\n", indent ? : "", nic_spec->parent);
+	printf("%s      Mac: ", indent? : "");
 	for(int j = 5; j >= 0; j--) {
 		printf("%02lx", (nic_spec->mac >> (j * 8)) & 0xff);
 		if(j - 1 >= 0)
@@ -1252,8 +1244,23 @@ static void print_nic_spec(NICSpec* nic_spec) {
 		else
 			printf(" ");
 	}
-	printf(" Parent %s\n", nic_spec->parent);
-	printf("%12s%ldMbps/%ld, %ldMbps/%ld, %ldMBs\n", "", nic_spec->rx_bandwidth / 1000000, nic_spec->rx_buffer_size, nic_spec->tx_bandwidth / 1000000, nic_spec->rx_buffer_size, nic_spec->pool_size / (1024 * 1024));
+	printf("\n");
+	printf("%s        RXBandwidth: %ldMbps\n", indent ? : "", nic_spec->rx_bandwidth / 1000000);
+	printf("%s        Rxsize: %ld\n", indent ? : "", nic_spec->rx_buffer_size);
+	printf("%s        TXBandwidth: %ldMbps\n", indent ? : "", nic_spec->tx_bandwidth / 1000000);
+	printf("%s        TxSize: %ld\n", indent ? : "", nic_spec->tx_buffer_size);
+	printf("%s        HeaderPadding: %ld\n", indent ? : "", nic_spec->padding_head);
+	printf("%s        TailPadding: %ld\n", indent ? : "",  nic_spec->padding_tail);
+	printf("%s        PoolSize: %ldMbs\n", indent ? : "",  nic_spec->pool_size / (1024 * 1024));
+	// 	printf("%12sRX packets:%d dropped:%d\n", "", vnic->input_packets, vnic->input_drop_packets);
+	// 	printf("%12sTX packets:%d dropped:%d\n", "", vnic->output_packets, vnic->output_drop_packets);
+	// 
+	// 	printf("%12sRX bytes:%lu ", "", vnic->input_bytes);
+	// 	print_byte_size(vnic->input_bytes);
+	// 	printf("  TX bytes:%lu ", vnic->output_bytes);
+	// 	print_byte_size(vnic->output_bytes);
+	// 	printf("\n");
+	// 	printf("%12sHead Padding:%d Tail Padding:%d\n", "",vnic->padding_head, vnic->padding_tail);
 }
 
 static void print_vm_spec(VMSpec* vm_spec) {
@@ -1279,22 +1286,7 @@ static void print_vm_spec(VMSpec* vm_spec) {
 		printf("    NICS:\n");
 		for(int i = 0; i < vm_spec->nic_count; i++) {
 			NICSpec* nic_spec = &vm_spec->nics[i];
-			printf("        %s:\n", nic_spec->name);
-			printf("            Parent: %s\n", nic_spec->parent);
-			printf("            Mac: ");
-			for(int j = 5; j >= 0; j--) {
-				printf("%02lx", (nic_spec->mac >> (j * 8)) & 0xff);
-				if(j - 1 >= 0)
-					printf(":");
-				else
-					printf(" ");
-			}
-			printf("\n");
-			printf("            RXBandwidth: %ldMbps\n", nic_spec->rx_bandwidth / 1000000);
-			printf("            Rxsize: %ld\n", nic_spec->rx_buffer_size);
-			printf("            TXBandwidth: %ldMbps\n", nic_spec->tx_bandwidth / 1000000);
-			printf("            TxSize: %ld\n", nic_spec->tx_buffer_size);
-			printf("            PoolSize: %ldMbs\n", nic_spec->pool_size / (1024 * 1024));
+			print_nic_spec(nic_spec, "        ");
 		}
 	}
 
@@ -1692,8 +1684,7 @@ static int cmd_vnic(int argc, char** argv, void(*callback)(char* result, int exi
 		for(int i = 0; i < vm_spec.nic_count; i++) {
 			NICSpec* nic_spec = &nics[i];
 
-			print_nic_spec(nic_spec);
-			print_nic_spec_metadata(nic_spec);
+			print_nic_spec(nic_spec, NULL);
 			is_empty = false;
 		}
 		printf("\n");
