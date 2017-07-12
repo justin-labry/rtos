@@ -720,6 +720,11 @@ uint32_t vm_create(VMSpec* vm_spec) {
 			}
 
 			uint64_t mac = nics[i].mac;
+			if(mac & ~0xffffffffffffL) {
+				errno = EOVERMAX;
+				goto fail;
+			}
+
 			if(mac == 0) {
 				do {
 					mac = timer_frequency() & 0x0fffffffffffL;
@@ -1288,7 +1293,7 @@ static void print_vm_spec(VMSpec* vm_spec) {
 			printf("            RXBandwidth: %ldMbps\n", nic_spec->rx_bandwidth / 1000000);
 			printf("            Rxsize: %ld\n", nic_spec->rx_buffer_size);
 			printf("            TXBandwidth: %ldMbps\n", nic_spec->tx_bandwidth / 1000000);
-			printf("            TxSize: %ld\n", nic_spec->rx_buffer_size);
+			printf("            TxSize: %ld\n", nic_spec->tx_buffer_size);
 			printf("            PoolSize: %ldMbs\n", nic_spec->pool_size / (1024 * 1024));
 		}
 	}
@@ -1374,7 +1379,7 @@ static int cmd_create(int argc, char** argv, void(*callback)(char* result, int e
 				token = strtok_r(token, "=", &value);
 				if(strcmp(token, "mac") == 0) {
 					if(!is_uint64(value)) return CMD_WRONG_TYPE_OF_ARGS;
-					nic->mac = strtoll(value, NULL, 16);
+					nic->mac = strtoull(value, NULL, 16);
 				} else if(strcmp(token, "dev") == 0) {
 					strncpy(nic->parent, value, MAX_NIC_NAME_LEN - 1);
 				} else if(strcmp(token, "ibuf") == 0) {
@@ -1416,12 +1421,10 @@ static int cmd_create(int argc, char** argv, void(*callback)(char* result, int e
 
 	uint32_t vmid = vm_create(&vm);
 	if(vmid == 0) {
-		callback(NULL, -1);
-	} else {
+		print_vm_error("");
+		return CMD_ERROR;
+	} else
 		print_vm_spec(&vm);
-		sprintf(cmd_result, "%d", vmid);
-		callback(cmd_result, 0);
-	}
 
 	free(vm.argv);
 	return CMD_SUCCESS;
@@ -1451,7 +1454,7 @@ static int cmd_vm_list(int argc, char** argv, void(*callback)(char* result, int 
 	char* p = cmd_result;
 
 	if(len <= 0) {
-		printf("None\n");
+		printf("Empty\n");
 		return CMD_SUCCESS;
 	}
 
@@ -1677,6 +1680,7 @@ static int cmd_vnic(int argc, char** argv, void(*callback)(char* result, int exi
 	uint32_t ids[16];
 	int size = vm_list(ids, 16);
 
+	bool is_empty = true;
 	for(int i = 0 ; i < size; i++) {
 		VMSpec vm_spec = {0};
 		NICSpec nics[VM_MAX_NIC_COUNT] = {0};
@@ -1690,9 +1694,11 @@ static int cmd_vnic(int argc, char** argv, void(*callback)(char* result, int exi
 
 			print_nic_spec(nic_spec);
 			print_nic_spec_metadata(nic_spec);
+			is_empty = false;
 		}
 		printf("\n");
 	}
+	if(is_empty) printf("Empty\n");
 
 	return CMD_SUCCESS;
 }
