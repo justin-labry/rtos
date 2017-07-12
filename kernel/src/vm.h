@@ -25,7 +25,9 @@ typedef struct {
 } Block;
 
 #define VM_MAX_VM_COUNT	128
+#define VM_MIN_MEMORY_SIZE	0x800000		//8Mb
 #define VM_MAX_MEMORY_SIZE	0x8000000		//128Mb
+#define VM_MIN_STORAGE_SIZE	0x200000		//2Mb
 #define VM_MAX_STORAGE_SIZE	0x8000000		//128Mb
 #define VM_MAX_NIC_COUNT	NIC_MAX_COUNT
 #define VNIC_MAX_POOL_SIZE	0x8000000		//128Mb
@@ -37,16 +39,19 @@ typedef struct {
 #define NIC_DEFAULT_BUFFER_SIZE		1024
 #define NIC_DEFAULT_BANDWIDTH		1000000000	// 1Gbps
 
-#define EVMID			1
-#define ESTATUS			2
-#define EALLOCMEM		3
-#define EALLOCTHREAD	4
-#define EOVERMAX		5
-#define ENICDEV			6
-#define EVNICMAC		7
-#define EVNICINIT		8
-#define EADDVM			9
-#define ETHREADID		10
+typedef enum _VMError {
+	EVMID = 1,
+	ESTATUS,
+	EALLOCMEM,
+	EALLOCTHREAD,
+	EOVERMAX,
+	EUNDERMIN,
+	ENICDEV,
+	EVNICMAC,
+	EVNICINIT,
+	EADDVM,
+	ETHREADID,
+} VMError;
 
 /**
  * Virtual Machine

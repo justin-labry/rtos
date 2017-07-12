@@ -52,7 +52,7 @@ typedef enum _VNICError {
 	VNIC_ERROR_ATTRIBUTE_INVALID,	    ///<Invalid attributes speicifed
 	VNIC_ERROR_INVALID_BASE,	    ///<Base pointer is not pointing correct memory location
 	VNIC_ERROR_INVALID_POOLSIZE,	    ///<Pool size is not multiple of 2MB
-	VNIC_ERROR_NO_MEMEORY,		    ///<Not enough memory
+	VNIC_ERROR_NO_MEMORY,		    ///<Not enough memory
 	VNIC_ERROR_RESOURCE_NOT_AVAILABLE,  ///<Resource is not temporary available
 	VNIC_ERROR_NO_ID_AVAILABLE,	    ///<There is no more id for vnic
 	VNIC_ERROR_OPERATION_FAILED,	    ///<Failed to execute command successfully

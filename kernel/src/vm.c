@@ -558,6 +558,10 @@ uint32_t vm_create(VMSpec* vm_spec) {
 
 	// Allocate core
 	vm->core_size = vm_spec->core_size;
+	if(!vm->core_size) {
+		errno = EUNDERMIN;
+		goto fail;
+	}
 
 	int j = 0;
 	for(int i = 1; i < MP_MAX_CORE_COUNT; i++) {
@@ -577,10 +581,14 @@ uint32_t vm_create(VMSpec* vm_spec) {
 	}
 
 	// Allocate memory
-	uint32_t memory_size = vm_spec->memory_size;
-	memory_size = (memory_size + (VM_MEMORY_SIZE_ALIGN - 1)) & ~(VM_MEMORY_SIZE_ALIGN - 1);
+	uint32_t memory_size = memory_size = (vm_spec->memory_size + (VM_MEMORY_SIZE_ALIGN - 1)) & ~(VM_MEMORY_SIZE_ALIGN - 1);
 	if(memory_size > VM_MAX_MEMORY_SIZE) {
 		errno = EOVERMAX;
+		goto fail;
+	}
+
+	if(memory_size < VM_MIN_MEMORY_SIZE) {
+		errno = EUNDERMIN;
 		goto fail;
 	}
 
@@ -596,10 +604,14 @@ uint32_t vm_create(VMSpec* vm_spec) {
 	}
 
 	// Allocate storage
-	uint32_t storage_size = vm_spec->storage_size;
-	storage_size = (storage_size + (VM_STORAGE_SIZE_ALIGN - 1)) & ~(VM_STORAGE_SIZE_ALIGN - 1);
+	uint32_t storage_size = (vm_spec->storage_size + (VM_STORAGE_SIZE_ALIGN - 1)) & ~(VM_STORAGE_SIZE_ALIGN - 1);
 	if(storage_size > VM_MAX_STORAGE_SIZE) {
 		errno = EOVERMAX;
+		goto fail;
+	}
+
+	if(storage_size < VM_MIN_STORAGE_SIZE) {
+		errno = EUNDERMIN;
 		goto fail;
 	}
 
@@ -655,18 +667,16 @@ uint32_t vm_create(VMSpec* vm_spec) {
 				goto fail;
 			}
 
-			nics[i].budget = nics[i].budget ? : NIC_DEFAULT_BUDGET_SIZE;
+			if(!nics[i].pool_size) {
+				errno = EALLOCMEM;
+				goto fail;
+			}
+
 			nics[i].pool_size = nics[i].pool_size ? (nics[i].pool_size + VNIC_POOL_SIZE_ALIGN - 1) & ~(VNIC_POOL_SIZE_ALIGN - 1) : NIC_DEFAULT_POOL_SIZE;
 			if(nics[i].pool_size > VNIC_MAX_POOL_SIZE) {
 				errno = EOVERMAX;
 				goto fail;
 			}
-			nics[i].rx_bandwidth = nics[i].rx_bandwidth ? : NIC_DEFAULT_BANDWIDTH;
-			nics[i].tx_bandwidth = nics[i].tx_bandwidth ? : NIC_DEFAULT_BANDWIDTH;
-			nics[i].padding_head = nics[i].padding_head ? : NIC_DEFAULT_PADDING_SIZE;
-			nics[i].padding_tail = nics[i].padding_tail ? : NIC_DEFAULT_PADDING_SIZE;
-			nics[i].rx_buffer_size = nics[i].rx_buffer_size ? : NIC_DEFAULT_BUFFER_SIZE;
-			nics[i].tx_buffer_size = nics[i].tx_buffer_size ? : NIC_DEFAULT_BUFFER_SIZE;
 
 			uint64_t attrs[] = {
 				VNIC_MAC, mac,
@@ -1127,31 +1137,34 @@ void vm_stdio_handler(VM_STDIO_CALLBACK callback) {
 void print_vm_error(const char* msg) {
 	switch(errno) {
 		case EVMID: 
-			printf("VM Error: VM ID is wrong");
+			printf("VM Error: The VM ID is invalid");
 			break;
 		case ESTATUS:
-			printf("VM Error: VM status is wrong");
+			printf("VM Error: The VM status is invalid");
 			break;
 		case EALLOCMEM:
-			printf("VM Error: Allocating memory is fail");
+			printf("VM Error: Memory allocation failure");
 			break;
 		case EALLOCTHREAD:
-			printf("VM Error: Allocating thread is fail");
+			printf("VM Error: Thread allocation failure");
 			break;
 		case EOVERMAX:
-			printf("VM Error: Over limit");
+			printf("VM Error: Beyond the maximum limit");
+			break;
+		case EUNDERMIN:
+			printf("VM Error: Does not meet minimum requirements");
 			break;
 		case ENICDEV:
 			printf("VM Error: Can't found NIC device");
 			break;
 		case EVNICMAC:
-			printf("VM Error: MAC address is wrong");
+			printf("VM Error: MAC address is invalid");
 			break;
 		case EVNICINIT:
-			printf("VM Error: Initilaizing vnic is fail");
+			printf("VM Error: VNIC initialization failed");
 			break;
 		case EADDVM:
-			printf("VM Error: Adding VM is fail");
+			printf("VM Error: Failed to add VM");
 			break;
 		case ETHREADID:
 			printf("VM Error: Thread ID is wrong");
@@ -1166,7 +1179,7 @@ void print_vm_error(const char* msg) {
 static void print_nic_spec(NICSpec* nic_spec, char* indent) {
 	printf("%s%s:\n", indent ? : "", nic_spec->name);
 	printf("%s    Parent: %s\n", indent ? : "", nic_spec->parent);
-	printf("%s      Mac: ", indent? : "");
+	printf("%s    Mac: ", indent? : "");
 	for(int j = 5; j >= 0; j--) {
 		printf("%02lx", (nic_spec->mac >> (j * 8)) & 0xff);
 		if(j - 1 >= 0)
@@ -1175,13 +1188,13 @@ static void print_nic_spec(NICSpec* nic_spec, char* indent) {
 			printf(" ");
 	}
 	printf("\n");
-	printf("%s        RXBandwidth: %ldMbps\n", indent ? : "", nic_spec->rx_bandwidth / 1000000);
-	printf("%s        Rxsize: %ld\n", indent ? : "", nic_spec->rx_buffer_size);
-	printf("%s        TXBandwidth: %ldMbps\n", indent ? : "", nic_spec->tx_bandwidth / 1000000);
-	printf("%s        TxSize: %ld\n", indent ? : "", nic_spec->tx_buffer_size);
-	printf("%s        HeaderPadding: %ld\n", indent ? : "", nic_spec->padding_head);
-	printf("%s        TailPadding: %ld\n", indent ? : "",  nic_spec->padding_tail);
-	printf("%s        PoolSize: %ldMbs\n", indent ? : "",  nic_spec->pool_size / (1024 * 1024));
+	printf("%s    RXBandwidth: %ldMbps\n", indent ? : "", nic_spec->rx_bandwidth / 1000000);
+	printf("%s    Rxsize: %ld\n", indent ? : "", nic_spec->rx_buffer_size);
+	printf("%s    TXBandwidth: %ldMbps\n", indent ? : "", nic_spec->tx_bandwidth / 1000000);
+	printf("%s    TxSize: %ld\n", indent ? : "", nic_spec->tx_buffer_size);
+	printf("%s    HeaderPadding: %ld\n", indent ? : "", nic_spec->padding_head);
+	printf("%s    TailPadding: %ld\n", indent ? : "",  nic_spec->padding_tail);
+	printf("%s    PoolSize: %ldMbs\n", indent ? : "",  nic_spec->pool_size / (1024 * 1024));
 	// 	printf("%12sRX packets:%d dropped:%d\n", "", vnic->input_packets, vnic->input_drop_packets);
 	// 	printf("%12sTX packets:%d dropped:%d\n", "", vnic->output_packets, vnic->output_drop_packets);
 	// 
@@ -1293,36 +1306,49 @@ static int cmd_create(int argc, char** argv, void(*callback)(char* result, int e
 		} else if(strcmp(argv[i], "-n") == 0) {
 			NICSpec* nic = &(vm.nics[vm.nic_count++]);
 
+			nic->mac = 0; //Random
+			nic->budget = NIC_DEFAULT_BUDGET_SIZE;
+			nic->rx_buffer_size = NIC_DEFAULT_BUFFER_SIZE;
+			nic->tx_buffer_size = NIC_DEFAULT_BUFFER_SIZE;
+			nic->rx_bandwidth = NIC_DEFAULT_BANDWIDTH;
+			nic->tx_bandwidth = NIC_DEFAULT_BANDWIDTH;
+			nic->padding_head = NIC_DEFAULT_PADDING_SIZE;
+			nic->padding_tail = NIC_DEFAULT_PADDING_SIZE;
+			nic->pool_size = NIC_DEFAULT_POOL_SIZE;
+
 			NEXT_ARGUMENTS();
 			char* next;
 			char* token = strtok_r(argv[i], ",", &next);
 			while(token) {
 				char* value;
 				token = strtok_r(token, "=", &value);
-				if(strcmp(token, "mac") == 0) {
+				if(!strcmp(token, "mac")) {
 					if(!is_uint64(value)) return CMD_WRONG_TYPE_OF_ARGS;
 					nic->mac = strtoull(value, NULL, 16);
-				} else if(strcmp(token, "dev") == 0) {
+				} else if(!strcmp(token, "dev")) {
 					strncpy(nic->parent, value, MAX_NIC_NAME_LEN - 1);
-				} else if(strcmp(token, "ibuf") == 0) {
+				} else if(!strcmp(token, "budget")) {
+					if(!is_uint16(value)) return CMD_WRONG_TYPE_OF_ARGS;
+					nic->budget = parse_uint16(value);
+				} else if(!strcmp(token, "ibuf")) {
 					if(!is_uint32(value)) return CMD_WRONG_TYPE_OF_ARGS;
 					nic->rx_buffer_size = parse_uint32(value);
-				} else if(strcmp(token, "obuf") == 0) {
+				} else if(!strcmp(token, "obuf")) {
 					if(!is_uint32(value)) return CMD_WRONG_TYPE_OF_ARGS;
 					nic->tx_buffer_size = parse_uint32(value);
-				} else if(strcmp(token, "iband") == 0) {
+				} else if(!strcmp(token, "iband")) {
 					if(!is_uint64(value)) return CMD_WRONG_TYPE_OF_ARGS;
 					nic->rx_bandwidth = parse_uint64(value);
-				} else if(strcmp(token, "oband") == 0) {
+				} else if(!strcmp(token, "oband")) {
 					if(!is_uint64(value)) return CMD_WRONG_TYPE_OF_ARGS;
 					nic->tx_bandwidth = parse_uint64(value);
-				} else if(strcmp(token, "hpad") == 0) {
+				} else if(!strcmp(token, "hpad")) {
 					if(!is_uint16(value)) return CMD_WRONG_TYPE_OF_ARGS;
 					nic->padding_head = parse_uint16(value);
-				} else if(strcmp(token, "tpad") == 0) {
+				} else if(!strcmp(token, "tpad")) {
 					if(!is_uint16(value)) return CMD_WRONG_TYPE_OF_ARGS;
 					nic->padding_tail = parse_uint16(value);
-				} else if(strcmp(token, "pool") == 0) {
+				} else if(!strcmp(token, "pool")) {
 					if(!is_uint32(value)) return CMD_WRONG_TYPE_OF_ARGS;
 					nic->pool_size = parse_uint32(value);
 				} else {

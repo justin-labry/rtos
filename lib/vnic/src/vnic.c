@@ -138,6 +138,7 @@ static VNICError nic_init(void* base, uint64_t* attrs) {
 	nic->pool.bitmap = index;
 	index += BITMAP_SIZE;
 	index = ROUNDUP(index, NIC_CHUNK_SIZE);
+	if(index + NIC_CHUNK_SIZE > poolsize) return VNIC_ERROR_NO_MEMORY;
 
 	nic->pool.pool = index;
 	nic->pool.count = BITMAP_SIZE;
@@ -146,6 +147,7 @@ static VNICError nic_init(void* base, uint64_t* attrs) {
 	nic->pool.lock = 0;
 
 	nic->config = 0;
+
 	memset(nic->config_head, 0, (size_t)((uintptr_t)nic->config_tail - (uintptr_t)nic->config_head));
 	memset(base + nic->pool.bitmap, 0, nic->pool.count);
 
