@@ -324,7 +324,8 @@ const int32_t **__ctype_toupper_loc(void) {
 	return (void *)&__ctype_toupper_ptable;
 }
 
-// Ubuntu's libc compatible functions
+/// Ubuntu's libc compatible functions
+/// We must follow the glibc function prototype. Otherwise, the NetApp VM will die.
 
 #undef stdin
 #undef stdout
@@ -349,10 +350,12 @@ int _IO_putc(int ch, struct _IO_FILE* fp) {
 	return -1;
 }
 
-int __sprintf_chk(int flag, char *str, const char *format, ...) {
+//int __sprintf_chk(int flag, char *__s, const char *__format, ...) // legacy prototype
+int __sprintf_chk (char *__restrict __s, int __flag, size_t __slen, const char *__restrict __format, ...) {
+	// @see /usr/include/x86_64-linux-gnu/bits/stdio2.h
 	va_list va;
-	va_start(va, format);
-	int len = vsprintf(str, format, va);
+	va_start(va, __format);
+	int len = vsprintf(__s, __format, va);
 	va_end(va);
 
 	return len;
