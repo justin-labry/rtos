@@ -925,9 +925,8 @@ bool vm_status_set(uint32_t vmid, int status, VM_STATUS_CALLBACK callback, void*
 
 	// Lazy clean up
 	if(status == VM_STATUS_START) {
-		for(size_t i = 0; i < vm->memory.count; i++) {
-			memset(vm->memory.blocks[i], 0x0, 0x200000);
-		}
+		for(size_t i = 0; i < vm->memory.count; i++)
+			memset(vm->memory.blocks[i], 0, VM_MEMORY_SIZE_ALIGN);
 	}
 
 	CallbackInfo* info = calloc(1, sizeof(CallbackInfo));
@@ -935,7 +934,6 @@ bool vm_status_set(uint32_t vmid, int status, VM_STATUS_CALLBACK callback, void*
 		errno = EALLOCMEM;
 		return false;
 	}
-
 	info->callback = callback;
 	info->context = context;
 	info->status = status;
