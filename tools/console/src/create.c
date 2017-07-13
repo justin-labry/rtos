@@ -80,7 +80,7 @@ static int vm_create(int argc, char* argv[]) {
 				};
 
 				// Default NIC configuration
-				NICSpec* nic = &vm.nics[vm.nic_count];
+				NICSpec* nic = &vm.nics[vm.nic_count++];
 				nic->mac = 0;
 				strcpy(nic->parent, "eth0");
 				nic->rx_buffer_size = 1024;
@@ -129,11 +129,9 @@ static int vm_create(int argc, char* argv[]) {
 							break;
 					}
 				}
-
-				vm.nic_count++;
 				break;
 			case 'a' :
-				vm.argv = &optarg;
+				vm.argv[vm.argc++] = strdup(optarg);
 				break;
 
 			default:
