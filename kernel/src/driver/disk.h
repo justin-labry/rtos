@@ -16,6 +16,7 @@
 #define DISK_TYPE_RAMDISK	0x05
 
 #define DISK_AVAIL_DEVICES	8 	/* Available disks for each driver */
+#define DISK_AVAIL_PARTITIONS 8 	/* Available partitions for each disk */
 
 typedef struct {
 	uint8_t			status;

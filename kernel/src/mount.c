@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <string.h>
 #include <util/cmd.h>
 
 #include "driver/disk.h"
@@ -9,7 +10,7 @@ static Command commands[] = {
 	{
 		.name = "mount",
 		.desc = "Mount file system",
-		.args = "-t fs_type:str{bfs|ext2|fat} device:str path:str -> bool",
+		.args = "-t fs_type:str{bfs|ext2|fat} posix_device_name:str path:str -> bool",
 		.func = cmd_mount
 	},
 };
@@ -21,7 +22,7 @@ int mount_init() {
 
 static int cmd_mount(int argc, char** argv, void(*callback)(char* result, int exit_status)) {
 	if(argc < 5) {
-		printf("Argument is not enough\n");
+		printf("argument is not enough\n");
 		return -1;
 	}
 
@@ -31,7 +32,7 @@ static int cmd_mount(int argc, char** argv, void(*callback)(char* result, int ex
 	uint8_t partition;
 
 	if(strcmp(argv[1], "-t") != 0) {
-		printf("Argument is wrong\n");
+		printf("invalid option name %s were given\n", argv[1]);
 		return -2;
 	}
 
@@ -42,8 +43,13 @@ static int cmd_mount(int argc, char** argv, void(*callback)(char* result, int ex
 	} else if(strcmp(argv[2], "fat") == 0 || strcmp(argv[2], "FAT") == 0) {
 		type = FS_TYPE_FAT;
 	} else {
-		printf("%s type is not supported\n", argv[2]);
+		printf("filesystem %s is not supported\n", argv[2]);
 		return -3;
+	}
+
+	if(strlen(argv[3]) != 3) {
+		printf("malformed device name %s were given\n", argv[3]);
+		return -4;
 	}
 
 	if(argv[3][0] == 'v') {
@@ -53,20 +59,20 @@ static int cmd_mount(int argc, char** argv, void(*callback)(char* result, int ex
 	} else if(argv[3][0] == 'h') {
 		disk = DISK_TYPE_PATA;
 	} else {
-		printf("%c type is not supported\n", argv[3][0]);
-		return -3;
-	}
-
-	number = argv[3][2] - 'a';
-	if(number > 8) {
-		printf("Disk number cannot exceed %d\n", DISK_AVAIL_DEVICES);
-		return -4;
-	}
-
-	partition = argv[3][3] - '1';
-	if(partition > 3) {
-		printf("Partition number cannot exceed 4\n");
+		printf("device type %c is not supported. supported type is [v, s, h]\n", argv[3][0]);
 		return -5;
+	}
+
+	number = argv[3][1] - 'a';
+	if(number > DISK_AVAIL_DEVICES) {
+		printf("disk number cannot exceed %d\n", DISK_AVAIL_DEVICES);
+		return -6;
+	}
+
+	partition = argv[3][2] - '0';
+	if(partition > DISK_AVAIL_PARTITIONS) {
+		printf("partition number cannot exceed %d\n", DISK_AVAIL_PARTITIONS);
+		return -7;
 	}
 
 	fs_mount(disk << 16 | number, partition, type, argv[4]);
