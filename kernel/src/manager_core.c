@@ -686,25 +686,6 @@ static err_t manager_poll(void* arg, struct tcp_pcb* pcb) {
 // 	return 0;
 // }
 
-static int cmd_nic(int argc, char** argv, void(*callback)(char* result, int exit_status)) {
-	int nicdev_count = nicdev_get_count();
-	for(int i = 0 ; i < nicdev_count; i++) {
-		NICDevice* nicdev = nicdev_get_by_idx(i);
-		if(!nicdev) break;
-
-		printf("%12s", nicdev->name);
-		printf("HWaddr %02x:%02x:%02x:%02x:%02x:%02x\n",
-				(nicdev->mac >> 40) & 0xff,
-				(nicdev->mac >> 32) & 0xff,
-				(nicdev->mac >> 24) & 0xff,
-				(nicdev->mac >> 16) & 0xff,
-				(nicdev->mac >> 8) & 0xff,
-				(nicdev->mac >> 0) & 0xff);
-	}
-
-	return 0;
-}
-
 static int cmd_vlan(int argc, char** argv, void(*callback)(char* result, int exit_status)) {
 	if(argc < 3) {
 		printf("Wrong number of arguments\n");
@@ -804,11 +785,6 @@ static Command commands[] = {
 // 		.desc = "Set ip, port, netmask, gateway, nic of manager",
 // 		.func = cmd_manager_core
 // 	},
-	{
-		.name = "nic",
-		.desc = "Print a list of network interface",
-		.func = cmd_nic
-	},
 	{
 		.name = "vlan",
 		.desc = "Add or remove vlan",

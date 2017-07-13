@@ -46,6 +46,7 @@
 #include "packet_dump.h"
 #include "ver.h"
 #include "mount.h"
+#include "nicutil.h"
 //
 
 // Drivers
@@ -248,6 +249,11 @@ void main() {
 		printf("\nInitializing Mount... \n");
 		if(mount_init()) {
 			printf("Can't initialize Mount\n");
+		}
+
+		printf("\nInitializing Init... \n");
+		if(nicutil_init()) {
+			printf("Can't initialize nicutil\n");
 		}
 
 		printf("\nInitializing Version... \n");

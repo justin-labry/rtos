@@ -44,6 +44,7 @@
 #include "shmem.h"
 
 #include "ver.h"
+#include "nicutil.h"
 
 static int _timer_init(char* cpu_brand) {
 	uint64_t _frequency;
@@ -244,6 +245,11 @@ int main(int argc, char** argv) {
 
 	printf("\nInitializing shell...\n");
 	if(shell_init()) goto error;
+
+	printf("\nInitializing Init... \n");
+	if(nicutil_init()) {
+		printf("Can't initialize nicutil\n");
+	}
 
 	printf("\nInitializing Version... \n");
 	if(ver_init()) {
