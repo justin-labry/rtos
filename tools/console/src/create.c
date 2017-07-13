@@ -2,9 +2,11 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <errno.h>
 #include <signal.h>
 #include <getopt.h>
 #include <sys/time.h>
+
 #include <util/types.h>
 #include <control/rpc.h>
 #include <control/vmspec.h>
@@ -14,7 +16,9 @@
 static RPC* rpc;
 
 static void help() {
-	printf("Usage: create [Core Option] [Memory Option] [Storage Option] [NIC Option] [Arguments Option] \n");
+	printf("Usage: create"
+			"[-c core_count] [-m memory_size] [-s storage_size] [-a arguments]"
+			"[-n,[mac=mac_hex_value],[dev=interface_name],[ibuf=ibuf_size],[obuf=obuf_size],[iband=iband_size],[oband=oband_size],[hpad=hpad_size],[tpad=tpad_size],[pool=pool_hex_size]\n");
 }
 
 static bool callback_vm_create(uint32_t id, void* context) {
@@ -60,14 +64,14 @@ static int vm_create(int argc, char* argv[]) {
 			case 's' :
 				vm.storage_size = strtol(optarg, NULL, 16);
 				break;
-			case 'n' :
-				;
+			case 'n' :;
 				// Suboptions for NIC
 				enum {
-					MAC, DEV, IBUF, OBUF, IBAND, OBAND, HPAD, TPAD, POOL, SLOWPATH,
+					EMPTY, MAC, DEV, IBUF, OBUF, IBAND, OBAND, HPAD, TPAD, POOL, SLOWPATH,
 				};
 
-				char* const token[] = {
+				const char* token[] = {
+					[EMPTY] = "",
 					[MAC]   = "mac",
 					[DEV]   = "dev",
 					[IBUF]	= "ibuf",
@@ -77,12 +81,13 @@ static int vm_create(int argc, char* argv[]) {
 					[HPAD]	= "hpad",
 					[TPAD]	= "tpad",
 					[POOL]	= "pool",
+					NULL,
 				};
 
 				// Default NIC configuration
 				NICSpec* nic = &vm.nics[vm.nic_count++];
 				nic->mac = 0;
-				strcpy(nic->parent, "eth0");
+				nic->parent[0] = '\0';
 				nic->rx_buffer_size = 1024;
 				nic->tx_buffer_size = 1024;
 				nic->rx_bandwidth = 1000000000; /* 1 GB */
@@ -92,57 +97,73 @@ static int vm_create(int argc, char* argv[]) {
 				nic->pool_size = 0x400000; /* 4 MB */
 
 				char* subopts = optarg;
-				char* value;
 				while(optarg && *subopts != '\0') {
-					switch(getsubopt(&subopts, token, &value)) {
+					char* value = NULL;
+					int subopt_index = getsubopt(&subopts, (char* const*)token, &value);
+					if(subopt_index == -1) goto failure;
+
+					switch(subopt_index) {
+						case EMPTY:
+							break;
 						case MAC:
 							nic->mac = strtoll(value, NULL, 16);
+							if(value[0] == '-' || errno == ERANGE) goto failure;
 							break;
 						case DEV:
-							strcpy(nic->parent, value);
+							strncpy(nic->parent, value, MAX_NIC_NAME_LEN);
 							break;
 						case IBUF:
-							nic->rx_buffer_size = atol(value);
+							nic->rx_buffer_size = strtoul(value, NULL, 0);
+							if(value[0] == '-' || errno == ERANGE) goto failure;
 							break;
 						case OBUF:
-							nic->tx_buffer_size = atol(value);
+							nic->tx_buffer_size = strtoul(value, NULL, 0);
+							if(value[0] == '-' || errno == ERANGE) goto failure;
 							break;
 						case IBAND:
-							nic->rx_bandwidth = atoll(value);
+							nic->rx_bandwidth = strtoull(value, NULL, 0);
+							if(value[0] == '-' || errno == ERANGE) goto failure;
 							break;
 						case OBAND:
-							nic->tx_bandwidth = atoll(value);
+							nic->tx_bandwidth = strtoull(value, NULL, 0);
+							if(value[0] == '-' || errno == ERANGE) goto failure;
 							break;
 						case HPAD:
-							nic->padding_head = atoi(value);
+							nic->padding_head = strtoul(value, NULL, 0);
+							if(value[0] == '-' || errno == ERANGE) goto failure;
 							break;
 						case TPAD:
-							nic->padding_tail = atoi(value);
+							nic->padding_tail = strtoul(value, NULL, 0);
+							if(value[0] == '-' || errno == ERANGE) goto failure;
 							break;
 						case POOL:
-							nic->pool_size = strtol(value, NULL, 16);
+							nic->pool_size = strtoul(value, NULL, 15);
+							if(value[0] == '-' || errno == ERANGE) goto failure;
 							break;
 						default:
-							printf("No match found for token : /%s/\n", value);
-							help();
-							exit(EXIT_FAILURE);
+							goto failure;
 							break;
 					}
 				}
 				break;
 			case 'a' :
 				vm.argv[vm.argc++] = strdup(optarg);
+				if(errno == ENOMEM) goto failure;
 				break;
 
 			default:
-				help();
-				exit(EXIT_FAILURE);
+				goto failure;
 		}
 	}
 
 	rpc_vm_create(rpc, &vm, callback_vm_create, NULL);
 
 	return 0;
+
+failure:
+	printf("Malformed input were given\n");
+	help();
+	exit(EXIT_FAILURE);
 }
 
 int main(int argc, char *argv[]) {
