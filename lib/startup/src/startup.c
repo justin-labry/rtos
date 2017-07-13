@@ -240,8 +240,3 @@ void startup(int argc, char** argv) {
 
 	_startup(vmid);
 }
-
-void shutdown() {
-	unmapping_global_heap();
-	pn_unload();
-}
