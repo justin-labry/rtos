@@ -137,7 +137,7 @@ static int vm_create(int argc, char* argv[]) {
 							if(value[0] == '-' || errno == ERANGE) goto failure;
 							break;
 						case POOL:
-							nic->pool_size = strtoul(value, NULL, 15);
+							nic->pool_size = strtoul(value, NULL, 16);
 							if(value[0] == '-' || errno == ERANGE) goto failure;
 							break;
 						default:
