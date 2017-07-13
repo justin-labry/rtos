@@ -395,6 +395,8 @@ static bool vm_delete(VM* vm, int core) {
 			#endif
 			for(int i = 0; i < vm->nic_count; i++) {
 				if(vm->nics[i]) {
+					NICDevice* nic_dev = nicdev_get(vm->nics[i]->parent);
+					nicdev_unregister_vnic(nic_dev, vm->nics[i]->id);
 					dispatcher_destroy_vnic(vm->nics[i]);
 					bfree(vm->nics[i]->nic);
 					vnic_free_id(vm->nics[i]->id);
@@ -653,7 +655,7 @@ uint32_t vm_create(VMSpec* vm_spec) {
 			}
 
 			uint64_t mac = nics[i].mac;
-			if(mac & ~0xfeffffffffffL) {
+			if(mac & ~0xffffffffffffL) {
 				errno = EVNICMAC;
 				goto fail;
 			}

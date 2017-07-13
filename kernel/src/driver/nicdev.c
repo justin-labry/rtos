@@ -300,13 +300,18 @@ int nicdev_rx0(NICDevice* nic_dev, void* data, size_t size,
 		void* data_optional, size_t size_optional) {
 	Ether* eth = data;
 	int i;
-	VNIC* vnic;
 
 	if(size + size_optional < sizeof(Ether))
 		return NICDEV_PROCESS_PASS;
 	uint64_t dmac = endian48(eth->dmac);
 
 	if(unlikely(!!rx_process)) rx_process(data, size, rx_process_context);
+
+	VNIC* vnic = nicdev_get_vnic_mac(nic_dev, 0xffffffffffff);
+	if(vnic) {
+		vnic_rx(vnic, (uint8_t*)eth, size, data_optional, size_optional);
+		return NICDEV_PROCESS_COMPLETE;
+	}
 
 	if(dmac & ETHER_MULTICAST) {
 		for(i = 0; i < MAX_VNIC_COUNT; i++) {
