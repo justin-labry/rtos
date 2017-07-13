@@ -535,23 +535,25 @@ uint32_t vm_create(VMSpec* vm_spec) {
 	}
 
 	// Allocate args
-	int argv_len = sizeof(char*) * vm_spec->argc;
-	for(int i = 0; i < vm_spec->argc; i++) {
-		argv_len += strlen(vm_spec->argv[i]) + 1;
-	}
-	vm->argv = gmalloc(argv_len);
-	if(!vm->argv) {
-		errno = EALLOCMEM;
-		goto fail;
-	}
+	if(vm_spec->argc) {
+		vm->argc = vm_spec->argc;
+		int argv_len = sizeof(char*) * vm_spec->argc;
+		for(int i = 0; i < vm_spec->argc; i++) {
+			argv_len += strlen(vm_spec->argv[i]) + 1;
+		}
 
-	vm->argc = vm_spec->argc;
-	if(vm->argc) {
+		vm->argv = gmalloc(argv_len);
+		if(!vm->argv) {
+			errno = EALLOCMEM;
+			goto fail;
+		}
+		memset(vm->argv, 0, argv_len);
+
 		char* args = (void*)vm->argv + sizeof(char*) * vm_spec->argc;
 		for(int i = 0; i < vm_spec->argc; i++) {
 			vm->argv[i] = args;
 			int len = strlen(vm_spec->argv[i]) + 1;
-			memcpy(args, vm_spec->argv[i], len);
+			memcpy(vm->argv[i], vm_spec->argv[i], len);
 			args += len;
 		}
 	}
@@ -1242,9 +1244,9 @@ static void print_vm_spec(VMSpec* vm_spec) {
 	if(vm_spec->argc) {
 		printf("    Args: [");
 		for(int i = 0; i < vm_spec->argc; i++) {
-			printf("'%s' ", vm_spec->argv[i]);
+			printf("%s", vm_spec->argv[i]);
 
-			if(i - 1 < vm_spec->argc)
+			if(i + 1 < vm_spec->argc)
 				printf(", ");
 		}
 		printf("]\n");
@@ -1289,9 +1291,6 @@ static int cmd_create(int argc, char** argv, void(*callback)(char* result, int e
 
 	NICSpec nics[VM_MAX_NIC_COUNT] = {0};
 	vm.nics = nics;
-
-	vm.argc = 0;
-	vm.argv = calloc(CMD_MAX_ARGC, sizeof(char*));
 
 	for(int i = 1; i < argc; i++) {
 		if(strcmp(argv[i], "-c") == 0) {
@@ -1367,10 +1366,8 @@ static int cmd_create(int argc, char** argv, void(*callback)(char* result, int e
 		} else if(strcmp(argv[i], "-a") == 0) {
 			NEXT_ARGUMENTS();
 
-			for( ; i < argc; i++) {
-				vm.argv[vm.argc++] = argv[i];
-			}
-		}
+			vm.argv[vm.argc++] = argv[i];
+		} else return CMD_WRONG_TYPE_OF_ARGS;
 	}
 
 	uint32_t vmid = vm_create(&vm);

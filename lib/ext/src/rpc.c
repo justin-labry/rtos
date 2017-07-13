@@ -237,27 +237,16 @@ static int write_vm(RPC* rpc, VMSpec* vm) {
 	RETURN();
 }
 
-static void vm_free(VMSpec* vm);
-
-static int read_vm(RPC* rpc, VMSpec** vm2) {
+static int read_vm(RPC* rpc, VMSpec* vm) {
 	INIT();
 
 	bool is_not_null;
 	READ(read_bool(rpc, &is_not_null));
 	if(!is_not_null) {
-		*vm2 = NULL;
 		RETURN();
 	}
 
-	VMSpec* vm = malloc(sizeof(VMSpec));
-	if(!vm) {
-		return -10;
-	}
-	memset(vm, 0x0, sizeof(VMSpec));
-	
 	void failed() {
-		if(vm)
-			vm_free(vm);
 	}
 
 	READ2(read_uint32(rpc, &vm->id), failed);
@@ -267,12 +256,6 @@ static int read_vm(RPC* rpc, VMSpec** vm2) {
 	READ2(read_uint16(rpc, &vm->nic_count), failed);
 
 	if(vm->nic_count) {
-		vm->nics = malloc(vm->nic_count * sizeof(NICSpec));
-		if(!vm->nics) {
-			failed();
-			return -10;
-		}
-		memset(vm->nics, 0, vm->nic_count * sizeof(NICSpec));
 		for(int i = 0; i < vm->nic_count; i++) {
 			READ2(read_uint64(rpc, &vm->nics[i].mac), failed);
 			char* ch;
@@ -291,38 +274,16 @@ static int read_vm(RPC* rpc, VMSpec** vm2) {
 	}
 
 	READ2(read_uint16(rpc, &vm->argc), failed);
-
 	if(vm->argc) {
-		int rbuf_read = rpc->rbuf_read;
-		int argv_size = sizeof(char**) * vm->argc;
-		for(int i = 0; i < vm->argc; i++) {
-			uint16_t len2;
-			READ2(read_string(rpc, NULL, &len2), failed);
-
-			argv_size += len2 + 1;
-		}
-
-		vm->argv = malloc(argv_size);
-		if(!vm->argv) {
-			failed();
-			return -2;
-		}
-		memset(vm->argv, 0x0, argv_size);
-		char* str = (void*)vm->argv + sizeof(char**) * vm->argc;
-
-		rpc->rbuf_read = rbuf_read;
 		for(int i = 0; i < vm->argc; i++) {
 			char* ch;
 			uint16_t len2;
 			READ2(read_string(rpc, &ch, &len2), failed);
 
-			vm->argv[i] = str;
-			memcpy(str, ch, len2);
-			str += len2 + 1;
+			vm->argv[i] = calloc(1, len2 + 1);
+			memcpy(vm->argv[i], ch, len2);
 		}
 	}
-
-	*vm2 = vm;
 
 	RETURN();
 }
@@ -446,16 +407,20 @@ static void vm_create_handler_callback(RPC* rpc, uint32_t id) {
 static int vm_create_req_handler(RPC* rpc) {
 	INIT();
 
-	VMSpec* vm;
+	VMSpec vm = {0};
+	NICSpec nics[VMSPEC_MAX_NIC_COUNT] = {0};
+	vm.nics = nics;
+
 	READ(read_vm(rpc, &vm));
 	if(rpc->vm_create_handler) {
-		rpc->vm_create_handler(rpc, vm, rpc->vm_create_handler_context, vm_create_handler_callback);
+		rpc->vm_create_handler(rpc, &vm, rpc->vm_create_handler_context, vm_create_handler_callback);
 	} else {
 		vm_create_handler_callback(rpc, 0);
 	}
 
-	if(vm)
-		vm_free(vm);
+	for(int i = 0; i < vm.argc; i++) {
+		if(vm.argv[i]) free(vm.argv[i]);
+	}
 
 	RETURN();
 }
@@ -476,16 +441,15 @@ int rpc_vm_get(RPC* rpc, uint32_t id, bool(*callback)(VMSpec* vm, void* context)
 static int vm_get_res_handler(RPC* rpc) {
 	INIT();
 
-	VMSpec* vm;
+	VMSpec vm = {0};
+	NICSpec nics[VMSPEC_MAX_NIC_COUNT] = {0};
+	vm.nics = nics;
 	READ(read_vm(rpc, &vm));
 
-	if(rpc->vm_get_callback && !rpc->vm_get_callback(vm, rpc->vm_get_context)) {
+	if(rpc->vm_get_callback && !rpc->vm_get_callback(&vm, rpc->vm_get_context)) {
 		rpc->vm_get_callback = NULL;
 		rpc->vm_get_context = NULL;
 	}
-
-	if(vm)
-		vm_free(vm);
 
 	RETURN();
 }
@@ -564,16 +528,15 @@ static void vm_set_handler_callback(RPC* rpc, bool result) {
 static int vm_set_req_handler(RPC* rpc) {
 	INIT();
 
-	VMSpec* vm;
+	VMSpec vm = {0};
+	NICSpec nics[VMSPEC_MAX_NIC_COUNT] = {0};
+	vm.nics = nics;
 	READ(read_vm(rpc, &vm));
 	if(rpc->vm_set_handler) {
-		rpc->vm_set_handler(rpc, vm, rpc->vm_set_handler_context, vm_set_handler_callback);
+		rpc->vm_set_handler(rpc, &vm, rpc->vm_set_handler_context, vm_set_handler_callback);
 	} else {
 		vm_set_handler_callback(rpc, false);
 	}
-
-	if(vm)
-		vm_free(vm);
 
 	RETURN();
 }
@@ -1229,16 +1192,6 @@ bool rpc_loop(RPC* rpc) {
 
 		is_first = false;
 	}
-}
-
-static void vm_free(VMSpec* vm) {
-	if(vm->argv)
-		free(vm->argv);
-
-	if(vm->nics)
-		free(vm->nics);
-
-	free(vm);
 }
 
 void rpc_vm_dump(VMSpec* vm) {

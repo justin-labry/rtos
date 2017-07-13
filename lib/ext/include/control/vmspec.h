@@ -67,7 +67,7 @@ typedef struct {
 	NICSpec*	nics;
 
 	uint16_t	argc;
-	char**		argv;
+	char*		argv[VMSPEC_MAX_ARGC];
 } VMSpec;
 
 #endif /* __CONTROL_VMSPEC_H__ */
