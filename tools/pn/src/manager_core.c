@@ -19,13 +19,12 @@
 typedef struct _Connection {
 	int	sock;
 	struct	sockaddr_in addr;
-	uint64_t last_response;
+	int 	error;
 } Connection;
 #define RESPONSE_TIMEOUT 1500 // 1.5sec
 
 static int (*on_accept)(RPC* rpc);
 static ManagerCore* manager_core;
-static uint64_t current;
 
 /*RPC Client*/
 /*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*/
@@ -33,10 +32,11 @@ static int client_read(RPC* rpc, void* buf, int size) {
 	Connection* conn = (Connection*)rpc->data;
 
 	ssize_t len = recv(conn->sock, buf, size, MSG_DONTWAIT);
-	if(len <= 0)
-		return (errno == EAGAIN || errno == 0) ? 0 : -1;
+	if(len == 0)
+		return (conn->error = -1);
+	else if(len == -1)
+		return (errno == EAGAIN || errno == 0) ? 0 : (conn->error = -1);
 
-	conn->last_response = current;
 	return len;
 }
 
@@ -45,25 +45,21 @@ static int client_write(RPC* rpc, void* buf, int size) {
 
 	ssize_t len = send(conn->sock, buf, size, MSG_DONTWAIT | MSG_NOSIGNAL);
 	if(len <= 0)
-		return (errno == EAGAIN || errno == 0) ? 0 : -1;
+		return (errno == EAGAIN || errno == 0) ? 0 : (conn->error = -1);
 
-	conn->last_response = current;
 	return len;
 }
 
 static void client_close(RPC* rpc) {
-	Connection* data = (Connection*)rpc->data;
-	if(data->sock == -1) return;
+	Connection* conn = (Connection*)rpc->data;
+	if(conn->sock == -1) return;
 
-	close(data->sock);
-	data->sock = -1;
+	close(conn->sock);
+	conn->sock = -1;
+	conn->error = -1;
 }
 
 static bool client_process(void* event_context) {
-	struct timeval t;
-	if(gettimeofday(&t, NULL) == 0)
-		current = t.tv_sec * 1000 + t.tv_usec / 1000;
-
 	ListIterator iter;
 	list_iterator_init(&iter, manager_core->clients);
 	while(list_iterator_has_next(&iter)) {
@@ -72,7 +68,7 @@ static bool client_process(void* event_context) {
 
 		rpc_loop(rpc);
 
-		if(current - conn->last_response >= RESPONSE_TIMEOUT) {
+		if(conn->error) {
 			list_iterator_remove(&iter);
 			client_close(rpc);
 			free(rpc);
@@ -145,7 +141,6 @@ static bool server_accept(void* event_context) {
 	Connection* data = (Connection*)client_rpc->data;
 	data->sock = client;
 	data->addr = client_addr;
-	data->last_response = current;
 	on_accept(client_rpc);
 
 	// Push rpc object if not exists
