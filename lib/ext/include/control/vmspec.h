@@ -4,6 +4,29 @@
 #include <stdint.h>
 #include <nic.h>
 
+ /**
+   +-create()
+   |
+   |                   start()
+   |  +------------------------------------------+
+   |  |                                          |
++--+--+---+  stop()  +---------+   pause()  +----v----+
+|         <----------+         <------------+         |
+| STOP    |          | PAUSE   |            | START   |
+|         |          |         +------------>         |
++----^----+          +---------+  resume()  +----+----+
+     |                                           |
+     +-------------------------------------------+
+                       stop()
+
+
+                      on error
+                     +---------+
+                     |         |
+                     | INVALID |
+                     |         |
+                     +---------+
+ */
 typedef enum {
 	VM_STATUS_STOP		= 0,
 	VM_STATUS_PAUSE		= 1,
@@ -34,14 +57,14 @@ typedef struct {
 
 typedef struct {
 	uint32_t	id;
-	
+
 	uint32_t	core_size;
 	uint32_t	memory_size;
 	uint32_t	storage_size;
-	
+
 	uint16_t	nic_count;
 	NICSpec*	nics;
-	
+
 	uint16_t	argc;
 	char**		argv;
 } VMSpec;
