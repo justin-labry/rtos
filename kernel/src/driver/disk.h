@@ -16,7 +16,7 @@
 #define DISK_TYPE_RAMDISK	0x05
 
 #define DISK_AVAIL_DEVICES	8 	/* Available disks for each driver */
-#define DISK_AVAIL_PARTITIONS 8 	/* Available partitions for each disk */
+#define DISK_AVAIL_PARTITIONS	4 	/* Available partitions for each disk */
 
 typedef struct {
 	uint8_t			status;
@@ -26,27 +26,27 @@ typedef struct {
 	uint32_t		first_lba;
 	uint32_t		num_of_sec;
 } __attribute__((packed)) PartEntry;
- 
+
 typedef struct {
 	uint8_t			code[446];
-	PartEntry		part_entry[4];
+	PartEntry		part_entry[DISK_AVAIL_PARTITIONS];
 	uint8_t			boot_signature[2];
 } __attribute__((packed)) BootSector;
 
-typedef struct _DiskDriver DiskDriver; 
+typedef struct _DiskDriver DiskDriver;
 
 typedef struct _DiskDriver {
 	// Driver information
 	uint16_t type;
 	uint16_t number;
 	BootSector* boot_sector;
-	
+
 	/* Low level file operation - disk specific */
 	int	(*init)(DiskDriver* driver, const char* cmdline, DiskDriver** disks);
-	int	(*read)(DiskDriver* driver, uint32_t lba, int sector_count, uint8_t* buf); 
+	int	(*read)(DiskDriver* driver, uint32_t lba, int sector_count, uint8_t* buf);
 	int	(*read_async)(DiskDriver* driver, List* blocks, int sector_count, void(*callback)(List* blocks, int count, void* context), void* context);
 	int	(*write_async)(DiskDriver* driver, List* blocks, int sector_count, void(*callback)(List* blocks, int count, void* context), void* context);
-	int	(*write)(DiskDriver* driver, uint32_t lba, int sector_count, uint8_t* buf); 
+	int	(*write)(DiskDriver* driver, uint32_t lba, int sector_count, uint8_t* buf);
 
 	// Probe information
 	void* 	priv;
