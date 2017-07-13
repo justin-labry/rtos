@@ -12,6 +12,8 @@
 #define RTC_DATE(v)	(((v) >> 8) & 0xff)
 #define RTC_WEEK(v)	(((v) >> 0) & 0xff)
 
+uint32_t rtc_time();
+uint32_t rtc_date();
 int rtc_init();
 
 #endif /* __RTC_H__ */

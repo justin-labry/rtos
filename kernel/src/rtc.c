@@ -29,7 +29,7 @@ static const char* weeks[] = {
 };
 
 // 0xff0000: hour, 0xff00: minute, 0xff: second
-static uint32_t rtc_time() {
+uint32_t rtc_time() {
 	uint32_t result = 0;
 	uint32_t tmp;
 	
@@ -49,7 +49,7 @@ static uint32_t rtc_time() {
 }
 
 // 0xff000000: year, 0xff0000: month, 0xff00: day of month, 0xff: day of week
-static uint32_t rtc_date() {
+uint32_t rtc_date() {
 	uint32_t result = 0;
 	uint32_t tmp;
 	

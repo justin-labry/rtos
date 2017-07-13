@@ -8,6 +8,5 @@ int vm_status(int vmid);
 
 void _startup(int vmid);
 void startup(int argc, char** argv);
-void shutdown();
 
 #endif /*__STARTUP_H__*/

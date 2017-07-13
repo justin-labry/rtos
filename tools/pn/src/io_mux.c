@@ -17,6 +17,7 @@ static Map* io_mux_table;
 bool io_mux_poll(void* context) {
 	fd_set read_fds;
 	read_fds = fds;
+	tv.tv_usec = 1000;
 
 	int retval = select(max_fd + 1, &read_fds, NULL, NULL, &tv);
 
