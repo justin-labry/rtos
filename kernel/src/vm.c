@@ -34,7 +34,7 @@ Map*	vms;
 
 // Core status
 typedef struct {
-	int			status;		// VM_STATUS_XXX
+	VMStatus		status;		// VM_STATUS_XXX
 	int			error_code;
 	int			return_code;
 
