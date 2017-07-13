@@ -756,7 +756,7 @@ bool vm_destroy(uint32_t vmid) {
 	}
 
 	for(int i = 0; i < vm->core_size; i++) {
-		if(cores[vm->cores[i]].status == VM_STATUS_START) {
+		if(cores[vm->cores[i]].status != VM_STATUS_STOP) {
 			errno = ESTATUS;
 			return false;
 		}
