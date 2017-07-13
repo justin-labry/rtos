@@ -886,7 +886,7 @@ bool vm_status_set(uint32_t vmid, int status, VM_STATUS_CALLBACK callback, void*
 	VM* vm = vm_get(vmid);
 	if(!vm) {
 		errno = EVMID;
-		return false;
+		goto failure;
 	}
 
 	int icc_type = 0;
@@ -895,7 +895,7 @@ bool vm_status_set(uint32_t vmid, int status, VM_STATUS_CALLBACK callback, void*
 		case VM_STATUS_START:
 			if(vm->status != VM_STATUS_STOP) {
 				errno = ESTATUS;
-				return false;
+				goto failure;
 			}
 			event_type = EVENT_VM_STARTED;
 			icc_type = ICC_TYPE_START;
@@ -903,7 +903,7 @@ bool vm_status_set(uint32_t vmid, int status, VM_STATUS_CALLBACK callback, void*
 		case VM_STATUS_PAUSE:
 			if(vm->status != VM_STATUS_START) {
 				errno = ESTATUS;
-				return false;
+				goto failure;
 			}
 			event_type = EVENT_VM_PAUSED;
 			icc_type = ICC_TYPE_PAUSE;
@@ -911,7 +911,7 @@ bool vm_status_set(uint32_t vmid, int status, VM_STATUS_CALLBACK callback, void*
 		case VM_STATUS_RESUME:
 			if(vm->status != VM_STATUS_PAUSE) {
 				errno = ESTATUS;
-				return false;
+				goto failure;
 			}
 			event_type = EVENT_VM_RESUMED;
 			icc_type = ICC_TYPE_RESUME;
@@ -919,7 +919,7 @@ bool vm_status_set(uint32_t vmid, int status, VM_STATUS_CALLBACK callback, void*
 		case VM_STATUS_STOP:
 			if(vm->status != VM_STATUS_PAUSE && vm->status != VM_STATUS_START) {
 				errno = ESTATUS;
-				return false;
+				goto failure;
 			}
 			event_type = EVENT_VM_STOPPED;
 			icc_type = ICC_TYPE_STOP;
@@ -935,7 +935,7 @@ bool vm_status_set(uint32_t vmid, int status, VM_STATUS_CALLBACK callback, void*
 	CallbackInfo* info = calloc(1, sizeof(CallbackInfo));
 	if(!info) {
 		errno = EALLOCMEM;
-		return false;
+		goto failure;
 	}
 	info->callback = callback;
 	info->context = context;
@@ -963,6 +963,11 @@ bool vm_status_set(uint32_t vmid, int status, VM_STATUS_CALLBACK callback, void*
 	}
 
 	return true;
+
+failure:
+	if(callback)
+		callback(false, context);
+	return false;
 }
 
 VMStatus vm_status_get(uint32_t vmid) {
