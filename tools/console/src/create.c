@@ -9,7 +9,7 @@
 #include <control/rpc.h>
 #include <control/vmspec.h>
 
-#include "rpc.h"
+#include "../include/rpc_console.h"
 
 static RPC* rpc;
 

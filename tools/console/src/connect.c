@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <util/types.h>
-#include "rpc.h"
+#include "../include/rpc_console.h"
 
 #define DEFAULT_HOST		"192.168.100.254"
 #define DEFAULT_PORT		1111

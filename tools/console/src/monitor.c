@@ -5,7 +5,7 @@
 #include <util/types.h>
 #include <control/rpc.h>
 
-#include "rpc.h"
+#include "../include/rpc_console.h"
 
 static RPC* rpc;
 

@@ -11,7 +11,7 @@
 #include <signal.h>
 #include <unistd.h>
 
-#include "rpc.h"
+#include "../include/rpc_console.h"
 
 typedef struct {
 	int	fd;

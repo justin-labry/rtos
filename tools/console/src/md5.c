@@ -10,7 +10,8 @@
 #include <control/rpc.h>
 #include <control/vmspec.h>
 
-#include "rpc.h"
+#include "../include/rpc_console.h"
+
 static int request_md5(int argc, char* argv[]);
 static bool response_md5(bool result, uint32_t* md5, void* context);
 

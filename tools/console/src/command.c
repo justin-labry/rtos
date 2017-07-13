@@ -2,7 +2,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <ctype.h>
-#include "command.h"
+#include "../include/command.h"
 
 // Underline command is for non-mandatory command
 #define ANSI_UNDERLINED_PRE  "\033[4m"
