@@ -577,8 +577,8 @@ int init(void* device, void* data) {
 		goto error;
 	memset(nicdev, 0, sizeof(NICDevice));
 
-	extern int nicdev_get_count();
-	sprintf(nicdev->name, "eth%d", nicdev_get_count());
+	extern int nicdevs_count;
+	sprintf(nicdev->name, "eth%d", nicdevs_count);
 
 	nicdev->mac = 0;
 	for(int i = 0; i < ETH_ALEN; i++) {

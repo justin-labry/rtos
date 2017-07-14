@@ -60,29 +60,8 @@ typedef struct _Ether {
 	uint8_t payload[0];			///< Ehternet payload
 } __attribute__ ((packed)) Ether;
 
-static NICDevice* nic_devices[MAX_NIC_DEVICE_COUNT]; //key string
-
-static int nicdev_get_count0(NICDevice* nicdev) {
-	int sum = 0;
-	while(nicdev) {
-		sum++;
-		nicdev = nicdev->next;
-	}
-
-	return sum;
-}
-
-int nicdev_get_count() {
-	int sum = 0;
-	for(int i = 0; i < MAX_NIC_DEVICE_COUNT; i++) {
-		if(!nic_devices[i])
-			return sum;
-
-		sum += nicdev_get_count0(nic_devices[i]);
-	}
-
-	return 0;
-}
+NICDevice* nicdevs[MAX_NIC_DEVICE_COUNT]; //key string
+int nicdevs_count;
 
 //for linux driver
 //linux driver can't include glib header
@@ -97,119 +76,75 @@ static NICDevice* nicdev_get0(NICDevice* nicdev, const char* name) {
 }
 
 NICDevice* nicdev_get(const char* name) {
-	int i;
-	for(i = 0; i < MAX_NIC_DEVICE_COUNT; i++) {
-		if(!nic_devices[i])
-			return NULL;
-
-		NICDevice* nicdev = nicdev_get0(nic_devices[i], name);
-		if(nicdev)
-			return nicdev;
+	for(int i = 0; i < nicdevs_count; i++) {
+		NICDevice* nicdev = nicdev_get0(nicdevs[i], name);
+		if(nicdev) return nicdev;
 	}
 
 	return NULL;
 }
 
 int nicdev_register(NICDevice* nicdev) {
-	if(nicdev_get(nicdev->name))
-		return -1;
+	if(nicdevs_count >= MAX_NIC_DEVICE_COUNT) return -1;
 
-	int i;
-	for(i = 0; i < MAX_NIC_DEVICE_COUNT; i++) {
-		if(!nic_devices[i]) {
-			nic_devices[i] = nicdev;
-			return 0;
-		}
-	}
+	if(nicdev_get(nicdev->name)) return -2;
 
-	return -2;
+	nicdevs[nicdevs_count++] = nicdev;
+
+	return 0;
 }
 
 NICDevice* nicdev_unregister(const char* name) {
-	NICDevice* dev;
-	int i, j;
-	for(i = 0; i < MAX_NIC_DEVICE_COUNT; i++) {
-		if(!nic_devices[i]) {
-			return NULL;
-		}
+	for(int i = 0; i < nicdevs_count; i++) {
+		if(!strncmp(nicdevs[i]->name, name, MAX_NIC_NAME_LEN)) {
+			NICDevice* nicdev = nicdevs[i];
+			nicdevs[i] = NULL;
+			nicdevs_count--;
+			nicdevs[i] = nicdevs[nicdevs_count];
 
-		if(!strncmp(nic_devices[i]->name, name, MAX_NIC_NAME_LEN)) {
-			dev = nic_devices[i];
-			nic_devices[i] = NULL;
-			for(j = i; j + 1 < MAX_NIC_DEVICE_COUNT; j++) {
-				if(nic_devices[j + 1]) {
-					nic_devices[j] = nic_devices[j + 1];
-					nic_devices[j + 1] = NULL;
-				}
-			}
-
-			return dev;
-		}
-	}
-
-	return NULL;
-}
-
-static NICDevice* nicdev_get_by_idx0(NICDevice* nicdev, int* idx) {
-	if(!(*idx))
-		return nicdev;
-
-	*idx -= 1;
-
-	if(!nicdev->next)
-		return NULL;
-
-	return nicdev_get_by_idx0(nicdev->next, idx);
-}
-
-NICDevice* nicdev_get_by_idx(int _index) {
-	int index = _index;
-	for(int i = 0; i < MAX_NIC_DEVICE_COUNT; i++) {
-		if(!nic_devices[i])
-			return NULL;
-
-		NICDevice* nicdev = nicdev_get_by_idx0(nic_devices[i], &index);
-		if(nicdev)
 			return nicdev;
+		}
 	}
 
 	return NULL;
 }
+
+NICDevice* nicdev_get_default() {
+	return nicdevs[0];
+}
+
+extern NIC* __nics[NIC_MAX_COUNT];
+extern int __nic_count;
 
 int nicdev_register_vnic(NICDevice* nicdev, VNIC* vnic) {
-	int i;
-	for(i = 0; i < MAX_VNIC_COUNT; i++) {
-		if(!nicdev->vnics[i]) {
-			nicdev->vnics[i] = vnic;
-			vnic->vlan_proto = nicdev->vlan_proto;
-			vnic->vlan_tci = nicdev->vlan_tci;
+	if(nicdev->vnics_count >= MAX_VNIC_COUNT) return -1;
 
-			return vnic->id;
-		}
-
-		if(nicdev->vnics[i]->mac == vnic->mac)
-			return -1;
+	for(int i = 0; i < nicdev->vnics_count; i++) {
+		if(nicdev->vnics[i]->mac == vnic->mac) return -1;
 	}
 
-	return -2;
+	nicdev->vnics[nicdev->vnics_count++] = vnic;
+	vnic->vlan_proto = nicdev->vlan_proto;
+	vnic->vlan_tci = nicdev->vlan_tci;
+
+	__nics[__nic_count++] = vnic->nic;
+
+	return vnic->id;
 }
 
 VNIC* nicdev_unregister_vnic(NICDevice* nicdev, uint32_t id) {
-	VNIC* vnic;
-	int i, j;
-
-	for(i = 0; i < MAX_VNIC_COUNT; i++) {
-		if(!nicdev->vnics[i])
-			return NULL;
-
+	for(int i = 0; i < nicdev->vnics_count; i++) {
 		if(nicdev->vnics[i]->id == id) {
-			//Shift
-			vnic = nicdev->vnics[i];
+			VNIC* vnic = nicdev->vnics[i];
 			nicdev->vnics[i] = NULL;
-			for(j = i; j + 1 < MAX_VNIC_COUNT; j++) {
-				if(nicdev->vnics[j + 1]) {
-					nicdev->vnics[j] = nicdev->vnics[j + 1];
-					nicdev->vnics[j + 1] = NULL;
+			nicdev->vnics[i] = nicdev->vnics[nicdev->vnics_count - 1];
+			nicdev->vnics_count--;
+
+			for(int j = 0; j < __nic_count; j++) {
+				if(__nics[j] == vnic->nic) {
+					__nics[j] = NULL;
+					__nics[j] = __nics[__nic_count - 1];
+					__nic_count--;
 				}
 			}
 
@@ -221,30 +156,20 @@ VNIC* nicdev_unregister_vnic(NICDevice* nicdev, uint32_t id) {
 }
 
 VNIC* nicdev_get_vnic(NICDevice* nicdev, uint32_t id) {
-	if(!nicdev)
-		return NULL;
+	if(!nicdev) return NULL;
 
-	for(int i = 0; i < MAX_VNIC_COUNT; i++) {
-		if(!nicdev->vnics[i])
-			return NULL;
-
-		if(nicdev->vnics[i]->id == id)
-			return nicdev->vnics[i];
+	for(int i = 0; i < nicdev->vnics_count; i++) {
+		if(nicdev->vnics[i]->id == id) return nicdev->vnics[i];
 	}
 
 	return NULL;
 }
 
 VNIC* nicdev_get_vnic_mac(NICDevice* nicdev, uint64_t mac) {
-	if(!nicdev)
-		return NULL;
+	if(!nicdev) return NULL;
 
-	for(int i = 0; i < MAX_VNIC_COUNT; i++) {
-		if(!nicdev->vnics[i])
-			return NULL;
-
-		if(nicdev->vnics[i]->mac == mac)
-			return nicdev->vnics[i];
+	for(int i = 0; i < nicdev->vnics_count; i++) {
+		if(nicdev->vnics[i]->mac == mac) return nicdev->vnics[i];
 	}
 
 	return NULL;
@@ -254,13 +179,10 @@ extern int strcmp(const char *s1, const char *s2);
 VNIC* nicdev_get_vnic_name(NICDevice* nicdev, char* name) {
 	if(!nicdev || !name) return NULL;
 
-	for(int i = 0; i < MAX_VNIC_COUNT; i++) {
+	for(int i = 0; i < nicdev->vnics_count; i++) {
 		VNIC* vnic = nicdev->vnics[i];
-		if(!vnic)
-			break;
 
-		if(strcmp(vnic->name, name) == 0)
-			return vnic;
+		if(strcmp(vnic->name, name) == 0) return vnic;
 	}
 
 	return NULL;
@@ -268,12 +190,10 @@ VNIC* nicdev_get_vnic_name(NICDevice* nicdev, char* name) {
 
 VNIC* nicdev_update_vnic(NICDevice* nicdev, VNIC* src_vnic) {
 	VNIC* dst_vnic = nicdev_get_vnic(nicdev, src_vnic->id);
-	if(!dst_vnic)
-		return NULL;
+	if(!dst_vnic) return NULL;
 
 	if(dst_vnic->mac != src_vnic->mac) {
-		if(nicdev_get_vnic_mac(nicdev, src_vnic->mac))
-			return NULL;
+		if(nicdev_get_vnic_mac(nicdev, src_vnic->mac)) return NULL;
 
 		dst_vnic->mac = src_vnic->mac;
 	}
@@ -299,11 +219,7 @@ int nicdev_rx(NICDevice* dev, void* data, size_t size) {
 int nicdev_rx0(NICDevice* nic_dev, void* data, size_t size,
 		void* data_optional, size_t size_optional) {
 	Ether* eth = data;
-	int i;
-
-	if(size + size_optional < sizeof(Ether))
-		return NICDEV_PROCESS_PASS;
-	uint64_t dmac = endian48(eth->dmac);
+	if(size + size_optional < sizeof(Ether)) return NICDEV_PROCESS_PASS;
 
 	if(unlikely(!!rx_process)) rx_process(data, size, rx_process_context);
 
@@ -313,10 +229,10 @@ int nicdev_rx0(NICDevice* nic_dev, void* data, size_t size,
 		return NICDEV_PROCESS_COMPLETE;
 	}
 
+	uint64_t dmac = endian48(eth->dmac);
 	if(dmac & ETHER_MULTICAST) {
-		for(i = 0; i < MAX_VNIC_COUNT; i++) {
-			if(!nic_dev->vnics[i])
-				break;
+		for(int i = 0; i < MAX_VNIC_COUNT; i++) {
+			if(!nic_dev->vnics[i]) break;
 
 			vnic_rx(nic_dev->vnics[i], (uint8_t*)eth, size, data_optional, size_optional);
 		}
@@ -340,12 +256,11 @@ int nicdev_srx0(VNIC* vnic, void* data, size_t size,
 		void* data_optional, size_t size_optional) {
 	Ether* eth = data;
 
-	if(size + size_optional < sizeof(Ether))
-		return NICDEV_PROCESS_PASS;
-	uint64_t smac = endian48(eth->smac);
+	if(size + size_optional < sizeof(Ether)) return NICDEV_PROCESS_PASS;
 
 	if(unlikely(!!srx_process)) srx_process(data, size, srx_process_context);
 
+	uint64_t smac = endian48(eth->smac);
 	if(smac == vnic->mac) {
 		vnic_srx(vnic, (uint8_t*)eth, size, data_optional, size_optional);
 		return NICDEV_PROCESS_PASS;
@@ -381,22 +296,19 @@ static bool transmitter(Packet* packet, void* context) {
 //Task = budget
 int nicdev_tx(NICDevice* nicdev,
 		bool (*process)(Packet* packet, void* context), void* context) {
-	VNIC* vnic;
-	int budget;
-	int count = 0;
-
 	TransmitContext transmitter_context = {
 		.process = process,
 		.context = context};
 
+	int count = 0;
 	for(; nicdev->round < MAX_VNIC_COUNT; nicdev->round++) {
-		vnic = nicdev->vnics[nicdev->round];
+		VNIC* vnic = nicdev->vnics[nicdev->round];
 		if(!vnic) {
 			nicdev->round = 0;
 			break;
 		}
 
-		budget = vnic->budget;
+		int budget = vnic->budget;
 		while(budget--) {
 			VNICError ret = vnic_tx(vnic, transmitter, &transmitter_context);
 

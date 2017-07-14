@@ -20,6 +20,7 @@ typedef struct _NICDevice{
 	void*		priv;
 
 	VNIC*		vnics[MAX_VNIC_COUNT];
+	int		vnics_count;
 
 	uint16_t	round; //FIXME: current nicdev only support round robin schedule
 
@@ -61,18 +62,17 @@ typedef enum _NICDEV_PROCESS_TYPE {
 int nicdev_process_register(bool (*process)(void*, size_t, void*), void* context, NICDEV_PROCESS_TYPE type);
 int nicdev_process_unregister(NICDEV_PROCESS_TYPE type);
 
-int nicdev_get_count();
 NICDevice* nicdev_create();
 void nicdev_destroy(NICDevice* dev);
 int nicdev_register(NICDevice* dev);
 NICDevice* nicdev_unregister(const char* name);
 
 /**
- * @param index NIC Device index
+ * Get default NICDevice
  * 
  * @return NIC Device
  */
-NICDevice* nicdev_get_by_idx(int idx);
+NICDevice* nicdev_get_default();
 
 /**
  * @param name NIC Device name

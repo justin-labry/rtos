@@ -3,16 +3,17 @@
 
 #include "driver/nicdev.h"
 
+//FIXME: delete extern value
+extern NICDevice* nicdevs[];
+extern int nicdevs_count;
 static int cmd_nic(int argc, char** argv, void(*callback)(char* result, int exit_status)) {
-	int nicdev_count = nicdev_get_count();
-	if(!nicdev_count) {
+	if(!nicdevs_count) {
 		printf("Empty\n");
 		return 0;
 	}
 
-	for(int i = 0 ; i < nicdev_count; i++) {
-		NICDevice* nicdev = nicdev_get_by_idx(i);
-		if(!nicdev) break;
+	for(int i = 0 ; i < nicdevs_count; i++) {
+		NICDevice* nicdev = nicdevs[i];
 
 		printf("%s:\n", nicdev->name);
 		printf("    HWaddr: %02x:%02x:%02x:%02x:%02x:%02x\n",

@@ -648,7 +648,7 @@ uint32_t vm_create(VMSpec* vm_spec) {
 
 		memset(vm->nics, 0, sizeof(VNIC) * vm->nic_count);
 		for(int i = 0; i < vm->nic_count; i++) {
-			NICDevice* nic_dev = strlen(nics[i].parent) ? nicdev_get(nics[i].parent) : nicdev_get_by_idx(0);
+			NICDevice* nic_dev = strlen(nics[i].parent) ? nicdev_get(nics[i].parent) : nicdev_get_default();
 			if(!nic_dev) {
 				errno = ENICDEV;
 				goto fail;
