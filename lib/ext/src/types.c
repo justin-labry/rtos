@@ -7,6 +7,8 @@
 #include "util/types.h"
 
 bool is_uint8(const char* val) {
+	if(!val || val[0] == '-') return false;
+
 	char* end = NULL;
 	errno = 0;
 	long int v = __strtoul(val, &end, 0);
@@ -23,6 +25,8 @@ uint8_t parse_uint8(const char* val) {
 }
 
 bool is_uint16(const char* val) {
+	if(!val || val[0] == '-') return false;
+
 	char* end = NULL;
 	errno = 0;
 	uint32_t v = __strtoul(val, &end, 0);
@@ -39,6 +43,8 @@ uint16_t parse_uint16(const char* val) {
 }
 
 bool is_uint32(const char* val) {
+	if(!val || val[0] == '-') return false;
+
 	char* end = NULL;
 	errno = 0;
 	__strtoul(val, &end, 0);
@@ -54,6 +60,8 @@ uint32_t parse_uint32(const char* val) {
 }
 
 bool is_uint64(const char* val) {
+	if(!val || val[0] == '-') return false;
+
 	char* end = NULL;
 	errno = 0;
 	__strtoull(val, &end, 0);
