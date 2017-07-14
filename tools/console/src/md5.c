@@ -25,19 +25,26 @@ static int request_md5(int argc, char* argv[]) {
 	int vmid = 0;
 	size_t storage_size = 0;
 
-	if(argc == 2)
-		vmid = atoi(argv[1]);
-	else if(argc == 3) {
-		vmid = atoi(argv[1]);
-		storage_size = atoi(argv[2]);
+	if(argc == 2) {
+		if(!is_uint32(argv[1])) goto failure;
+		vmid = parse_uint32(argv[1]);
+	} else if(argc == 3) {
+		if(!is_uint32(argv[1])) goto failure;
+		vmid = parse_uint32(argv[1]);
+
+		if(!is_uint32(argv[2])) goto failure;
+		storage_size = parse_uint32(argv[2]);
 	} else {
-		help();
-		exit(1);
+		goto failure;
 	}
 
 	// Request MD5 value & Register Response callback handler
 	rpc_storage_md5(rpc, vmid, storage_size, response_md5, NULL);
 	return 0;
+
+failure:
+	help();
+	exit(1);
 }
 
 static bool response_md5(bool result, uint32_t* md5, void* context) {

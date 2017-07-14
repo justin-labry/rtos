@@ -56,12 +56,15 @@ static int vm_create(int argc, char* argv[]) {
 	while((opt = getopt_long(argc, argv, "c:m:s:n::a:", options, &index)) != -1) {
 		switch(opt) {
 			case 'c' :
-				vm.core_size = atoi(optarg);
+				if(!is_uint32(optarg)) goto failure;
+				vm.core_size = strtol(optarg, NULL, 0);
 				break;
 			case 'm' :
+				if(!is_uint32(optarg)) goto failure;
 				vm.memory_size = strtol(optarg, NULL, 16);
 				break;
 			case 's' :
+				if(!is_uint32(optarg)) goto failure;
 				vm.storage_size = strtol(optarg, NULL, 16);
 				break;
 			case 'n' :;
@@ -106,39 +109,39 @@ static int vm_create(int argc, char* argv[]) {
 						case EMPTY:
 							break;
 						case MAC:
+							if(!is_uint64(value)) goto failure;
 							nic->mac = strtoll(value, NULL, 16);
-							if(value[0] == '-' || errno == ERANGE) goto failure;
 							break;
 						case DEV:
 							strncpy(nic->parent, value, MAX_NIC_NAME_LEN);
 							break;
 						case IBUF:
+							if(!is_uint32(value)) goto failure;
 							nic->rx_buffer_size = strtoul(value, NULL, 0);
-							if(value[0] == '-' || errno == ERANGE) goto failure;
 							break;
 						case OBUF:
+							if(!is_uint32(value)) goto failure;
 							nic->tx_buffer_size = strtoul(value, NULL, 0);
-							if(value[0] == '-' || errno == ERANGE) goto failure;
 							break;
 						case IBAND:
+							if(!is_uint64(value)) goto failure;
 							nic->rx_bandwidth = strtoull(value, NULL, 0);
-							if(value[0] == '-' || errno == ERANGE) goto failure;
 							break;
 						case OBAND:
+							if(!is_uint64(value)) goto failure;
 							nic->tx_bandwidth = strtoull(value, NULL, 0);
-							if(value[0] == '-' || errno == ERANGE) goto failure;
 							break;
 						case HPAD:
+							if(!is_uint8(value)) goto failure;
 							nic->padding_head = strtoul(value, NULL, 0);
-							if(value[0] == '-' || errno == ERANGE) goto failure;
 							break;
 						case TPAD:
+							if(!is_uint8(value)) goto failure;
 							nic->padding_tail = strtoul(value, NULL, 0);
-							if(value[0] == '-' || errno == ERANGE) goto failure;
 							break;
 						case POOL:
+							if(!is_uint32(value)) goto failure;
 							nic->pool_size = strtoul(value, NULL, 16);
-							if(value[0] == '-' || errno == ERANGE) goto failure;
 							break;
 						default:
 							goto failure;
