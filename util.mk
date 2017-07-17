@@ -1,11 +1,11 @@
 # Utility Makefile for PacketNgin RTOS
-.PHONY: prepare run stop ver deploy sdk gdb dis help
+.PHONY: prepare run stop ver deploy sdk gdb dis cmoka help
 
 prepare:
 	@echo "Prepare all requirement packages for PacketNgin build"
 	sudo apt-get install -y git nasm multiboot libcurl4-gnutls-dev qemu-kvm bridge-utils \
 		libc6-dev-i386 doxygen graphviz kpartx bison flex cmake nodejs autoconf dcfldd \
-		libcmocka-dev
+		cmake
 all: run
 
 # Default running option is QEMU
@@ -113,6 +113,14 @@ dis: kernel/kernel.elf
 
 clean: Build.make
 	@${MAKE} --no-print-directory -C . -f Build.make clean
+
+CMOKA_DIR := tools/cmoka
+cmoka:
+	mkdir -p $(CMOKA_DIR)/build
+	cd $(CMOKA_DIR) && curl -O -L https://cmocka.org/files/1.1/cmocka-1.1.1.tar.xz
+	cd $(CMOKA_DIR) && mv cmocka-1.1.1/* .
+	cd $(CMOKA_DIR) && tar -xf cmocka-1.1.1.tar.xz && rm cmocka-1.1.1.tar.xz
+	cd $(CMOKA_DIR)/build && cmake -DCMAKE_INSTALL_PREFIX=`pwd` .. && make install
 
 help:
 	@echo "Usage: make [target] [option=name]"
