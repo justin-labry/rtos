@@ -220,6 +220,8 @@ static int write_vm(RPC* rpc, VMSpec* vm) {
 	for(int i = 0; i < vm->nic_count; i++) {
 		WRITE(write_uint64(rpc, vm->nics[i].mac));
 		WRITE(write_string(rpc, vm->nics[i].parent));
+		WRITE(write_uint16(rpc, vm->nics[i].budget));
+		WRITE(write_uint64(rpc, vm->nics[i].flags));
 		WRITE(write_uint32(rpc, vm->nics[i].rx_buffer_size));
 		WRITE(write_uint32(rpc, vm->nics[i].tx_buffer_size));
 		WRITE(write_uint64(rpc, vm->nics[i].rx_bandwidth));
@@ -227,6 +229,16 @@ static int write_vm(RPC* rpc, VMSpec* vm) {
 		WRITE(write_uint8(rpc, vm->nics[i].padding_head));
 		WRITE(write_uint8(rpc, vm->nics[i].padding_tail));
 		WRITE(write_uint32(rpc, vm->nics[i].pool_size));
+
+		WRITE(write_uint64(rpc, vm->nics[i].rx_bytes));
+		WRITE(write_uint64(rpc, vm->nics[i].rx_packets));
+		WRITE(write_uint64(rpc, vm->nics[i].rx_drop_bytes));
+		WRITE(write_uint64(rpc, vm->nics[i].rx_drop_packets));
+
+		WRITE(write_uint64(rpc, vm->nics[i].tx_bytes));
+		WRITE(write_uint64(rpc, vm->nics[i].tx_packets));
+		WRITE(write_uint64(rpc, vm->nics[i].tx_drop_bytes));
+		WRITE(write_uint64(rpc, vm->nics[i].tx_drop_packets));
 	}
 
 	WRITE(write_uint16(rpc, vm->argc));
@@ -263,6 +275,8 @@ static int read_vm(RPC* rpc, VMSpec* vm) {
 			READ2(read_string(rpc, &ch, &len2), failed);
 			memcpy(vm->nics[i].parent, ch, len2);
 
+			READ2(read_uint16(rpc, &vm->nics[i].budget), failed);
+			READ2(read_uint64(rpc, &vm->nics[i].flags), failed);
 			READ2(read_uint32(rpc, &vm->nics[i].rx_buffer_size), failed);
 			READ2(read_uint32(rpc, &vm->nics[i].tx_buffer_size), failed);
 			READ2(read_uint64(rpc, &vm->nics[i].rx_bandwidth), failed);
@@ -270,6 +284,16 @@ static int read_vm(RPC* rpc, VMSpec* vm) {
 			READ2(read_uint8(rpc, &vm->nics[i].padding_head), failed);
 			READ2(read_uint8(rpc, &vm->nics[i].padding_tail), failed);
 			READ2(read_uint32(rpc, &vm->nics[i].pool_size), failed);
+
+			READ2(read_uint64(rpc, &vm->nics[i].rx_bytes), failed);
+			READ2(read_uint64(rpc, &vm->nics[i].rx_packets), failed);
+			READ2(read_uint64(rpc, &vm->nics[i].rx_drop_bytes), failed);
+			READ2(read_uint64(rpc, &vm->nics[i].rx_drop_packets), failed);
+
+			READ2(read_uint64(rpc, &vm->nics[i].tx_bytes), failed);
+			READ2(read_uint64(rpc, &vm->nics[i].tx_packets), failed);
+			READ2(read_uint64(rpc, &vm->nics[i].tx_drop_bytes), failed);
+			READ2(read_uint64(rpc, &vm->nics[i].tx_drop_packets), failed);
 		}
 	}
 
@@ -407,9 +431,7 @@ static void vm_create_handler_callback(RPC* rpc, uint32_t id) {
 static int vm_create_req_handler(RPC* rpc) {
 	INIT();
 
-	VMSpec vm = {0};
-	NICSpec nics[VMSPEC_MAX_NIC_COUNT] = {0};
-	vm.nics = nics;
+	VMSpec vm = {};
 
 	READ(read_vm(rpc, &vm));
 	if(rpc->vm_create_handler) {
@@ -441,9 +463,7 @@ int rpc_vm_get(RPC* rpc, uint32_t id, bool(*callback)(VMSpec* vm, void* context)
 static int vm_get_res_handler(RPC* rpc) {
 	INIT();
 
-	VMSpec vm = {0};
-	NICSpec nics[VMSPEC_MAX_NIC_COUNT] = {0};
-	vm.nics = nics;
+	VMSpec vm = {};
 	READ(read_vm(rpc, &vm));
 
 	if(rpc->vm_get_callback && !rpc->vm_get_callback(&vm, rpc->vm_get_context)) {
@@ -528,9 +548,7 @@ static void vm_set_handler_callback(RPC* rpc, bool result) {
 static int vm_set_req_handler(RPC* rpc) {
 	INIT();
 
-	VMSpec vm = {0};
-	NICSpec nics[VMSPEC_MAX_NIC_COUNT] = {0};
-	vm.nics = nics;
+	VMSpec vm = {};
 	READ(read_vm(rpc, &vm));
 	if(rpc->vm_set_handler) {
 		rpc->vm_set_handler(rpc, &vm, rpc->vm_set_handler_context, vm_set_handler_callback);

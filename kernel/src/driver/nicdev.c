@@ -13,6 +13,7 @@
 #define endian16(v)		__builtin_bswap16((v))	///< Change endianness for 48 bits
 #define endian48(v)		(__builtin_bswap64((v)) >> 16)	///< Change endianness for 48 bits
 
+#define ETHER_BROADCAST		0xffffffffffff ///< MAC address is broadcast
 #define ETHER_MULTICAST		((uint64_t)1 << 40)	///< MAC address is multicast
 #define ID_BUFFER_SIZE		(MAX_NIC_DEVICE_COUNT * 8)
 
@@ -216,34 +217,34 @@ int nicdev_rx(NICDevice* dev, void* data, size_t size) {
 	return nicdev_rx0(dev, data, size, NULL, 0);
 }
 
-int nicdev_rx0(NICDevice* nic_dev, void* data, size_t size,
+int nicdev_rx0(NICDevice* nicdev, void* data, size_t size,
 		void* data_optional, size_t size_optional) {
 	Ether* eth = data;
 	if(size + size_optional < sizeof(Ether)) return NICDEV_PROCESS_PASS;
 
 	if(unlikely(!!rx_process)) rx_process(data, size, rx_process_context);
 
-	VNIC* vnic = nicdev_get_vnic_mac(nic_dev, 0xffffffffffff);
-	if(vnic) {
-		vnic_rx(vnic, (uint8_t*)eth, size, data_optional, size_optional);
-		return NICDEV_PROCESS_COMPLETE;
-	}
-
+	bool is_complete = true;
 	uint64_t dmac = endian48(eth->dmac);
-	if(dmac & ETHER_MULTICAST) {
-		for(int i = 0; i < MAX_VNIC_COUNT; i++) {
-			if(!nic_dev->vnics[i]) break;
+	for(int i = 0; i < nicdev->vnics_count; i++) {
+		VNIC* vnic = nicdev->vnics[i];
+		if(vnic->mac == dmac) {
+			is_complete = true;
+			goto recv;
+		}
 
-			vnic_rx(nic_dev->vnics[i], (uint8_t*)eth, size, data_optional, size_optional);
+		if(vnic->flags & NIC_F_PROMISC) goto recv;
+
+		if(dmac & ETHER_MULTICAST) {
+			if(vnic->flags & NIC_F_MULTICAST) goto recv;
+			if(dmac == ETHER_BROADCAST && vnic->flags & NIC_F_BROADCAST) goto recv;
 		}
-		return NICDEV_PROCESS_PASS;
-	} else {
-		vnic = nicdev_get_vnic_mac(nic_dev, dmac);
-		if(vnic) {
-			vnic_rx(vnic, (uint8_t*)eth, size, data_optional, size_optional);
-			return NICDEV_PROCESS_COMPLETE;
-		}
+
+		continue;
+recv:
+		vnic_rx(vnic, (uint8_t*)eth, size, data_optional, size_optional);
 	}
+	if(is_complete) return NICDEV_PROCESS_COMPLETE;
 
 	return NICDEV_PROCESS_PASS;
 }

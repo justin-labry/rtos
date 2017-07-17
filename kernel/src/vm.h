@@ -32,12 +32,6 @@ typedef struct {
 #define VM_MAX_NIC_COUNT	NIC_MAX_COUNT
 #define VNIC_MAX_POOL_SIZE	0x8000000		//128Mb
 
-#define NIC_DEFAULT_NICDEV		"eth0"
-#define NIC_DEFAULT_POOL_SIZE		0x200000	// 4Mb
-#define NIC_DEFAULT_BUDGET_SIZE		32
-#define NIC_DEFAULT_PADDING_SIZE	32
-#define NIC_DEFAULT_BUFFER_SIZE		1024
-#define NIC_DEFAULT_BANDWIDTH		1000000000	// 1Gbps
 
 typedef enum _VMError {
 	EVMID = 1,
@@ -51,6 +45,7 @@ typedef enum _VMError {
 	EVNICINIT,
 	EADDVM,
 	ETHREADID,
+	EALIGN,
 } VMError;
 
 /**

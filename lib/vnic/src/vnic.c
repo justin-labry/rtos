@@ -91,6 +91,7 @@ static VNICError nic_init(void* base, uint64_t* attrs) {
 	nic->magic = NIC_MAGIC_HEADER;
 	nic->id = 0;
 	nic->mac = get_value(attrs, VNIC_MAC);
+	nic->flags = get_value(attrs, VNIC_FLAGS);
 	nic->rx_bandwidth = get_value(attrs, VNIC_RX_BANDWIDTH);
 	nic->tx_bandwidth = get_value(attrs, VNIC_TX_BANDWIDTH);
 	nic->padding_head = get_value(attrs, VNIC_PADDING_HEAD);
@@ -163,6 +164,7 @@ bool vnic_init(VNIC* vnic, uint64_t* attrs) {
 	vnic->budget = get_value(attrs, VNIC_BUDGET) ? : 32;
 	vnic->magic = vnic->nic->magic;
 	vnic->mac = vnic->nic->mac;
+	vnic->flags = vnic->nic->flags;
 	vnic->pool.bitmap = vnic->nic->pool.bitmap;
 	vnic->pool.count = vnic->nic->pool.count;
 	vnic->pool.pool = vnic->nic->pool.pool;

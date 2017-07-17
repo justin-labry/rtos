@@ -220,6 +220,7 @@ static VNIC* manager_create_vnic(char* nicdev_name) {
 		//VNIC_MAC, nicdev->mac,
 		VNIC_MAC, nicdev->mac,
 		VNIC_DEV, (uint64_t)nicdev->name,
+		VNIC_FLAGS, NICSPEC_DEFAULT_FLAGS,
 		VNIC_BUDGET, 32,
 		VNIC_POOL_SIZE, 0x200000,
 		VNIC_RX_BANDWIDTH, 1000000000L,

@@ -395,8 +395,8 @@ static bool vm_delete(VM* vm, int core) {
 			#endif
 			for(int i = 0; i < vm->nic_count; i++) {
 				if(vm->nics[i]) {
-					NICDevice* nic_dev = nicdev_get(vm->nics[i]->parent);
-					nicdev_unregister_vnic(nic_dev, vm->nics[i]->id);
+					NICDevice* nicdev = nicdev_get(vm->nics[i]->parent);
+					nicdev_unregister_vnic(nicdev, vm->nics[i]->id);
 					dispatcher_destroy_vnic(vm->nics[i]);
 					bfree(vm->nics[i]->nic);
 					vnic_free_id(vm->nics[i]->id);
@@ -519,7 +519,7 @@ static VM* vm_remove(uint32_t vmid) {
 	return map_remove(vms, (void*)(uint64_t)vmid);
 }
 
-uint32_t vm_create(VMSpec* vm_spec) {
+uint32_t vm_create(VMSpec* vmspec) {
 	VM* vm = gmalloc(sizeof(VM));
 	if(!vm) {
 		errno = EALLOCMEM;
@@ -537,11 +537,11 @@ uint32_t vm_create(VMSpec* vm_spec) {
 	}
 
 	// Allocate args
-	if(vm_spec->argc) {
-		vm->argc = vm_spec->argc;
-		int argv_len = sizeof(char*) * vm_spec->argc;
-		for(int i = 0; i < vm_spec->argc; i++) {
-			argv_len += strlen(vm_spec->argv[i]) + 1;
+	if(vmspec->argc) {
+		vm->argc = vmspec->argc;
+		int argv_len = sizeof(char*) * vmspec->argc;
+		for(int i = 0; i < vmspec->argc; i++) {
+			argv_len += strlen(vmspec->argv[i]) + 1;
 		}
 
 		vm->argv = gmalloc(argv_len);
@@ -551,17 +551,17 @@ uint32_t vm_create(VMSpec* vm_spec) {
 		}
 		memset(vm->argv, 0, argv_len);
 
-		char* args = (void*)vm->argv + sizeof(char*) * vm_spec->argc;
-		for(int i = 0; i < vm_spec->argc; i++) {
+		char* args = (void*)vm->argv + sizeof(char*) * vmspec->argc;
+		for(int i = 0; i < vmspec->argc; i++) {
 			vm->argv[i] = args;
-			int len = strlen(vm_spec->argv[i]) + 1;
-			memcpy(vm->argv[i], vm_spec->argv[i], len);
+			int len = strlen(vmspec->argv[i]) + 1;
+			memcpy(vm->argv[i], vmspec->argv[i], len);
 			args += len;
 		}
 	}
 
 	// Allocate core
-	vm->core_size = vm_spec->core_size;
+	vm->core_size = vmspec->core_size;
 	if(!vm->core_size) {
 		errno = EUNDERMIN;
 		goto fail;
@@ -585,18 +585,21 @@ uint32_t vm_create(VMSpec* vm_spec) {
 	}
 
 	// Allocate memory
-	uint32_t memory_size = memory_size = (vm_spec->memory_size + (VM_MEMORY_SIZE_ALIGN - 1)) & ~(VM_MEMORY_SIZE_ALIGN - 1);
-	if(memory_size > VM_MAX_MEMORY_SIZE) {
+	if(!vmspec->memory_size) vmspec->memory_size = VM_MIN_MEMORY_SIZE;
+	if(vmspec->memory_size & (VM_MEMORY_SIZE_ALIGN - 1)) {
+		errno = EALIGN;
+		goto fail;
+	}
+	if(vmspec->memory_size > VM_MAX_MEMORY_SIZE) {
 		errno = EOVERMAX;
 		goto fail;
 	}
-
-	if(memory_size < VM_MIN_MEMORY_SIZE) {
+	if(vmspec->memory_size < VM_MIN_MEMORY_SIZE) {
 		errno = EUNDERMIN;
 		goto fail;
 	}
 
-	vm->memory.count = memory_size / VM_MEMORY_SIZE_ALIGN;
+	vm->memory.count = vmspec->memory_size / VM_MEMORY_SIZE_ALIGN;
 	vm->memory.blocks = gmalloc(vm->memory.count * sizeof(void*));
 	memset(vm->memory.blocks, 0x0, vm->memory.count * sizeof(void*));
 	for(uint32_t i = 0; i < vm->memory.count; i++) {
@@ -608,18 +611,21 @@ uint32_t vm_create(VMSpec* vm_spec) {
 	}
 
 	// Allocate storage
-	uint32_t storage_size = (vm_spec->storage_size + (VM_STORAGE_SIZE_ALIGN - 1)) & ~(VM_STORAGE_SIZE_ALIGN - 1);
-	if(storage_size > VM_MAX_STORAGE_SIZE) {
+	if(!vmspec->storage_size) vmspec->storage_size = VM_MIN_STORAGE_SIZE;
+	if(vmspec->storage_size & (VM_STORAGE_SIZE_ALIGN - 1)) {
+		errno = EALIGN;
+		goto fail;
+	}
+	if(vmspec->storage_size > VM_MAX_STORAGE_SIZE) {
 		errno = EOVERMAX;
 		goto fail;
 	}
-
-	if(storage_size < VM_MIN_STORAGE_SIZE) {
+	if(vmspec->storage_size < VM_MIN_STORAGE_SIZE) {
 		errno = EUNDERMIN;
 		goto fail;
 	}
 
-	vm->storage.count = storage_size / VM_STORAGE_SIZE_ALIGN;
+	vm->storage.count = vmspec->storage_size / VM_STORAGE_SIZE_ALIGN;
 	vm->storage.blocks = gmalloc(vm->storage.count * sizeof(void*));
 	memset(vm->storage.blocks, 0x0, vm->storage.count * sizeof(void*));
 	for(uint32_t i = 0; i < vm->storage.count; i++) {
@@ -631,8 +637,8 @@ uint32_t vm_create(VMSpec* vm_spec) {
 	}
 
 	// Allocate VNICs
-	NICSpec* nics = vm_spec->nics;
-	vm->nic_count = vm_spec->nic_count;
+	NICSpec* nics = vmspec->nics;
+	vm->nic_count = vmspec->nic_count;
 	if(vm->nic_count > VM_MAX_NIC_COUNT) {
 		errno = EOVERMAX;
 		goto fail;
@@ -648,25 +654,30 @@ uint32_t vm_create(VMSpec* vm_spec) {
 
 		memset(vm->nics, 0, sizeof(VNIC) * vm->nic_count);
 		for(int i = 0; i < vm->nic_count; i++) {
-			NICDevice* nic_dev = strlen(nics[i].parent) ? nicdev_get(nics[i].parent) : nicdev_get_default();
-			if(!nic_dev) {
+			NICDevice* nicdev;
+			if(!strlen(nics[i].parent)) {
+				nicdev = nicdev_get_default();
+				if(nicdev) strncpy(nics[i].parent, nicdev->name, MAX_NIC_NAME_LEN);
+			} else nicdev = nicdev_get(nics[i].parent);
+
+			if(!nicdev) {
 				errno = ENICDEV;
 				goto fail;
 			}
 
-			uint64_t mac = nics[i].mac;
-			if(mac & ~0xffffffffffffL) {
-				errno = EVNICMAC;
-				goto fail;
+			if(nics[i].flags & NICSPEC_F_INHERITMAC) {
+				nics[i].mac = nicdev->mac;
 			}
 
-			if(mac == 0) {
+			if(nics[i].mac == 0) {
 				do {
-					mac = timer_frequency() & 0x0fffffffffffL;
-					mac |= 0x03L << 40;	// Locally administrered & Unicast
-					mac ^= 0x01L << 40;	// Locally administrered
-				} while(nicdev_get_vnic_mac(nic_dev, mac) != NULL);
-			} else if(nicdev_get_vnic_mac(nic_dev, mac) != NULL) {
+					nics[i].mac = timer_frequency() & 0x0fefffffffffL;
+					nics[i].mac |= 0x02L << 40;	// Locally administrered & Unicast
+				} while(nicdev_get_vnic_mac(nicdev, nics[i].mac) != NULL);
+			} else if(nicdev_get_vnic_mac(nicdev, nics[i].mac) != NULL) {
+				errno = EVNICMAC;
+				goto fail;
+			} else if(nics[i].mac & ~0xfeffffffffffL) {
 				errno = EVNICMAC;
 				goto fail;
 			}
@@ -676,16 +687,20 @@ uint32_t vm_create(VMSpec* vm_spec) {
 				goto fail;
 			}
 
-			nics[i].pool_size = nics[i].pool_size ? (nics[i].pool_size + VNIC_POOL_SIZE_ALIGN - 1) & ~(VNIC_POOL_SIZE_ALIGN - 1) : NIC_DEFAULT_POOL_SIZE;
+			if(nics[i].pool_size & (VNIC_POOL_SIZE_ALIGN - 1)) {
+				errno = EALIGN;
+				goto fail;
+			}
 			if(nics[i].pool_size > VNIC_MAX_POOL_SIZE) {
 				errno = EOVERMAX;
 				goto fail;
 			}
 
 			uint64_t attrs[] = {
-				VNIC_MAC, mac,
-				VNIC_DEV, (uint64_t)nic_dev->name,
+				VNIC_MAC, nics[i].mac,
+				VNIC_DEV, (uint64_t)nicdev->name,
 				VNIC_BUDGET, nics[i].budget,
+				VNIC_FLAGS, nics[i].flags,
 				VNIC_POOL_SIZE, nics[i].pool_size,
 				VNIC_RX_BANDWIDTH, nics[i].rx_bandwidth,
 				VNIC_TX_BANDWIDTH, nics[i].tx_bandwidth,
@@ -730,7 +745,7 @@ uint32_t vm_create(VMSpec* vm_spec) {
 
 			vm->nics[i] = vnic;
 
-			nicdev_register_vnic(nic_dev, vnic);
+			nicdev_register_vnic(nicdev, vnic);
 		}
 	}
 
@@ -740,8 +755,8 @@ uint32_t vm_create(VMSpec* vm_spec) {
 	}
 
 	//Copy to VMSpec
-	vm_spec->id = vm->id;
-	vm_get_spec(vm_spec);
+	vmspec->id = vm->id;
+	vm_get_spec(vmspec);
 
 	return vm->id;
 
@@ -783,26 +798,28 @@ bool vm_destroy(uint32_t vmid) {
 	return true;
 }
 
-bool vm_get_spec(VMSpec* vm_spec) {
-	VM* vm = vm_get(vm_spec->id);
+bool vm_get_spec(VMSpec* vmspec) {
+	VM* vm = vm_get(vmspec->id);
 	if(!vm) {
 		errno = EVMID;
 		return false;
 	}
 
-	vm_spec->id = vm->id;
-	vm_spec->core_size = vm->core_size;
-	vm_spec->memory_size = vm->memory.count * VM_MEMORY_SIZE_ALIGN;
-	vm_spec->storage_size = vm->storage.count * VM_STORAGE_SIZE_ALIGN;
+	vmspec->id = vm->id;
+	vmspec->core_size = vm->core_size;
+	vmspec->memory_size = vm->memory.count * VM_MEMORY_SIZE_ALIGN;
+	vmspec->storage_size = vm->storage.count * VM_STORAGE_SIZE_ALIGN;
 	
-	vm_spec->nic_count = vm->nic_count;
-	for(int i = 0; i < vm_spec->nic_count; i++) {
+	vmspec->nic_count = vm->nic_count;
+	for(int i = 0; i < vmspec->nic_count; i++) {
 		VNIC* vnic = vm->nics[i];
-		NICSpec* nicspec = &vm_spec->nics[i];
+		NICSpec* nicspec = &vmspec->nics[i];
 		strncpy(nicspec->name, vnic->name, MAX_NIC_NAME_LEN);
 		nicspec->mac = vnic->mac;
 		strcpy(nicspec->parent, vnic->parent);
 		nicspec->budget = vnic->budget;
+		nicspec->flags = vnic->flags;
+
 		nicspec->rx_buffer_size = vnic->rx.size;
 		nicspec->tx_buffer_size = vnic->tx.size;
 		nicspec->padding_head = vnic->padding_head;
@@ -810,8 +827,15 @@ bool vm_get_spec(VMSpec* vm_spec) {
 		nicspec->rx_bandwidth = vnic->rx_bandwidth;
 		nicspec->tx_bandwidth = vnic->tx_bandwidth;
 		nicspec->pool_size = vnic->nic_size;
-	}
 
+		nicspec->rx_packets = vnic->input_packets;
+		nicspec->tx_bytes = vnic->output_packets;
+		nicspec->tx_drop_bytes = vnic->output_drop_bytes;
+		nicspec->rx_bytes = vnic->input_bytes;
+		nicspec->tx_bytes = vnic->output_bytes;
+		nicspec->rx_drop_bytes = vnic->input_drop_bytes;
+		nicspec->tx_drop_bytes = vnic->output_drop_bytes;
+	}
 	//TODO: Add arguments
 	return true;
 }
@@ -1144,7 +1168,7 @@ void vm_stdio_handler(VM_STDIO_CALLBACK callback) {
 	stdio_callback = callback;
 }
 
-void print_vm_error(const char* msg) {
+static void print_vm_error(const char* msg) {
 	switch(errno) {
 		case EVMID: 
 			printf("VM Error: The VM ID is invalid");
@@ -1179,6 +1203,9 @@ void print_vm_error(const char* msg) {
 		case ETHREADID:
 			printf("VM Error: Thread ID is wrong");
 			break;
+		case EALIGN:
+			printf("VM Error: Size Alignment wrong");
+			break;
 	}
 
 	if(msg) printf(": %s\n", msg);
@@ -1186,41 +1213,73 @@ void print_vm_error(const char* msg) {
 }
 ////
 
-static void print_nic_spec(NICSpec* nic_spec, char* indent) {
-	printf("%s%s:\n", indent ? : "", nic_spec->name);
-	printf("%s    Parent: %s\n", indent ? : "", nic_spec->parent);
-	printf("%s    Mac: ", indent? : "");
+static void print_nicspec(NICSpec* nicspec, char* indent) {
+	printf("%s%s:\n", indent ? : "", nicspec->name);
+	printf("%s    Parent: %s\n", indent ? : "", nicspec->parent);
+	printf("%s    Mac: ", indent ? : "");
 	for(int j = 5; j >= 0; j--) {
-		printf("%02lx", (nic_spec->mac >> (j * 8)) & 0xff);
+		printf("%02lx", (nicspec->mac >> (j * 8)) & 0xff);
 		if(j - 1 >= 0)
 			printf(":");
 		else
 			printf(" ");
 	}
 	printf("\n");
-	printf("%s    RXBandwidth: %ldMbps\n", indent ? : "", nic_spec->rx_bandwidth / 1000000);
-	printf("%s    Rxsize: %ld\n", indent ? : "", nic_spec->rx_buffer_size);
-	printf("%s    TXBandwidth: %ldMbps\n", indent ? : "", nic_spec->tx_bandwidth / 1000000);
-	printf("%s    TxSize: %ld\n", indent ? : "", nic_spec->tx_buffer_size);
-	printf("%s    HeaderPadding: %ld\n", indent ? : "", nic_spec->padding_head);
-	printf("%s    TailPadding: %ld\n", indent ? : "",  nic_spec->padding_tail);
-	printf("%s    PoolSize: %ldMbs\n", indent ? : "",  nic_spec->pool_size / (1024 * 1024));
-	// 	printf("%12sRX packets:%d dropped:%d\n", "", vnic->input_packets, vnic->input_drop_packets);
-	// 	printf("%12sTX packets:%d dropped:%d\n", "", vnic->output_packets, vnic->output_drop_packets);
-	// 
-	// 	printf("%12sRX bytes:%lu ", "", vnic->input_bytes);
-	// 	print_byte_size(vnic->input_bytes);
-	// 	printf("  TX bytes:%lu ", vnic->output_bytes);
-	// 	print_byte_size(vnic->output_bytes);
-	// 	printf("\n");
-	// 	printf("%12sHead Padding:%d Tail Padding:%d\n", "",vnic->padding_head, vnic->padding_tail);
+	printf("%s    Flags: [", indent ? : "");
+	bool is_first = true;
+	if(nicspec->flags & NICSPEC_F_INHERITMAC) {
+		if(is_first) is_first = false;
+		else printf(", ");
+		printf("INHERITMAC");
+	}
+	if(nicspec->flags & NICSPEC_F_NOARP) {
+		if(is_first) is_first = false;
+		else printf(", ");
+		printf("NOARP");
+	}
+	if(nicspec->flags & NICSPEC_F_PROMISC) {
+		if(is_first) is_first = false;
+		else printf(", ");
+		printf("PROMISC");
+	}
+	if(nicspec->flags & NICSPEC_F_BROADCAST) {
+		if(is_first) is_first = false;
+		else printf(", ");
+		printf("BROADCAST");
+	}
+	if(nicspec->flags & NICSPEC_F_MULTICAST) {
+		if(is_first) is_first = false;
+		else printf(", ");
+		printf("MULTICAST");
+	}
+	if(nicspec->flags & NICSPEC_F_MULTIQUEUE) {
+		if(is_first) is_first = false;
+		else printf(", ");
+		printf("MULTIQUEUE");
+	}
+	printf("]\n");
+
+	printf("%s    RXBandwidth: %ldMbps\n", indent ? : "", nicspec->rx_bandwidth / 1000000);
+	printf("%s    TXBandwidth: %ldMbps\n", indent ? : "", nicspec->tx_bandwidth / 1000000);
+	printf("%s    Rxsize: %ld\n", indent ? : "", nicspec->rx_buffer_size);
+	printf("%s    TxSize: %ld\n", indent ? : "", nicspec->tx_buffer_size);
+	printf("%s    HeaderPadding: %ld\n", indent ? : "", nicspec->padding_head);
+	printf("%s    TailPadding: %ld\n", indent ? : "",  nicspec->padding_tail);
+	printf("%s    PoolSize: %ldMbs\n", indent ? : "",  nicspec->pool_size / (1024 * 1024));
+
+	printf("%s    RX:\n", indent ? : "");
+	printf("%s        Packets: %ld (%ld Bytes)\n", indent ? : "", nicspec->rx_packets, nicspec->rx_bytes);
+	printf("%s        DropPackets: %ld (%ld Bytes)\n", indent ? : "", nicspec->rx_drop_packets, nicspec->rx_drop_bytes);
+	printf("%s    TX:\n", indent ? : "");
+	printf("%s        Packets: %ld (%ld Bytes)\n", indent ? : "", nicspec->tx_bytes, nicspec->tx_bytes);
+	printf("%s        DropPackets: %ld (%ld Bytes)\n", indent ? : "", nicspec->tx_drop_bytes, nicspec->tx_drop_bytes);
 }
 
-static void print_vm_spec(VMSpec* vm_spec) {
-	printf("VM[%d]:\n", vm_spec->id);
+static void print_vmspec(VMSpec* vmspec) {
+	printf("VM[%d]:\n", vmspec->id);
 	printf("    Processors: ", "");
 	uint16_t processors;
-	int count = vm_processors(vm_spec->id, &processors);
+	int count = vm_processors(vmspec->id, &processors);
 	printf("[");
 	for(int i = 0; i < 16 && count; i++) {
 		if(processors & 1) {
@@ -1232,23 +1291,23 @@ static void print_vm_spec(VMSpec* vm_spec) {
 	}
 	printf("]\n");
 
-	printf("    Memory: %dMbs\n", vm_spec->memory_size  / 0x100000);
-	printf("    Storage: %dMbs\n", vm_spec->storage_size  / 0x100000);
+	printf("    Memory: %dMbs\n", vmspec->memory_size  / 0x100000);
+	printf("    Storage: %dMbs\n", vmspec->storage_size  / 0x100000);
 
-	if(vm_spec->nic_count) {
+	if(vmspec->nic_count) {
 		printf("    NICS:\n");
-		for(int i = 0; i < vm_spec->nic_count; i++) {
-			NICSpec* nic_spec = &vm_spec->nics[i];
-			print_nic_spec(nic_spec, "        ");
+		for(int i = 0; i < vmspec->nic_count; i++) {
+			NICSpec* nicspec = &vmspec->nics[i];
+			print_nicspec(nicspec, "        ");
 		}
 	}
 
-	if(vm_spec->argc) {
+	if(vmspec->argc) {
 		printf("    Args: [");
-		for(int i = 0; i < vm_spec->argc; i++) {
-			printf("%s", vm_spec->argv[i]);
+		for(int i = 0; i < vmspec->argc; i++) {
+			printf("%s", vmspec->argv[i]);
 
-			if(i + 1 < vm_spec->argc)
+			if(i + 1 < vmspec->argc)
 				printf(", ");
 		}
 		printf("]\n");
@@ -1285,14 +1344,12 @@ static int cmd_md5(int argc, char** argv, void(*callback)(char* result, int exit
 	return CMD_SUCCESS;
 }
 
+//FIXME add get_opt, get_opt_long
 static int cmd_create(int argc, char** argv, void(*callback)(char* result, int exit_status)) {
 	VMSpec vm = {0};
 	vm.core_size = 1;
 	vm.memory_size = 0x1000000;		/* 16MB */
 	vm.storage_size = 0x1000000;		/* 16MB */
-
-	NICSpec nics[VM_MAX_NIC_COUNT] = {0};
-	vm.nics = nics;
 
 	for(int i = 1; i < argc; i++) {
 		if(strcmp(argv[i], "-c") == 0) {
@@ -1314,14 +1371,15 @@ static int cmd_create(int argc, char** argv, void(*callback)(char* result, int e
 			NICSpec* nic = &(vm.nics[vm.nic_count++]);
 
 			nic->mac = 0; //Random
-			nic->budget = NIC_DEFAULT_BUDGET_SIZE;
-			nic->rx_buffer_size = NIC_DEFAULT_BUFFER_SIZE;
-			nic->tx_buffer_size = NIC_DEFAULT_BUFFER_SIZE;
-			nic->rx_bandwidth = NIC_DEFAULT_BANDWIDTH;
-			nic->tx_bandwidth = NIC_DEFAULT_BANDWIDTH;
-			nic->padding_head = NIC_DEFAULT_PADDING_SIZE;
-			nic->padding_tail = NIC_DEFAULT_PADDING_SIZE;
-			nic->pool_size = NIC_DEFAULT_POOL_SIZE;
+			nic->budget = NICSPEC_DEFAULT_BUDGET_SIZE;
+			nic->flags =  NICSPEC_DEFAULT_FLAGS;
+			nic->rx_buffer_size = NICSPEC_DEFAULT_BUFFER_SIZE;
+			nic->tx_buffer_size = NICSPEC_DEFAULT_BUFFER_SIZE;
+			nic->rx_bandwidth = NICSPEC_DEFAULT_BANDWIDTH;
+			nic->tx_bandwidth = NICSPEC_DEFAULT_BANDWIDTH;
+			nic->padding_head = NICSPEC_DEFAULT_PADDING_SIZE;
+			nic->padding_tail = NICSPEC_DEFAULT_PADDING_SIZE;
+			nic->pool_size = NICSPEC_DEFAULT_POOL_SIZE;
 
 			NEXT_ARGUMENTS();
 			char* next;
@@ -1329,6 +1387,8 @@ static int cmd_create(int argc, char** argv, void(*callback)(char* result, int e
 			while(token) {
 				char* value;
 				token = strtok_r(token, "=", &value);
+				if(!value) return CMD_WRONG_TYPE_OF_ARGS;
+
 				if(!strcmp(token, "mac")) {
 					if(!is_uint64(value)) return CMD_WRONG_TYPE_OF_ARGS;
 					nic->mac = strtoull(value, NULL, 16);
@@ -1355,6 +1415,42 @@ static int cmd_create(int argc, char** argv, void(*callback)(char* result, int e
 				} else if(!strcmp(token, "tpad")) {
 					if(!is_uint16(value)) return CMD_WRONG_TYPE_OF_ARGS;
 					nic->padding_tail = parse_uint16(value);
+				} else if(!strcmp(token, "inheritmac")) {
+					if(!strcmp(value, "on")) nic->flags |= NICSPEC_F_INHERITMAC;
+					else if(!strcmp(value, "off")) {
+						nic->flags |= NICSPEC_F_INHERITMAC;
+						nic->flags ^= NICSPEC_F_INHERITMAC;
+					} else return CMD_WRONG_TYPE_OF_ARGS;
+				} else if(!strcmp(token, "noarp")) {
+					if(!strcmp(value, "on")) nic->flags |= NICSPEC_F_NOARP;
+					else if(!strcmp(value, "off")) {
+						nic->flags |= NICSPEC_F_NOARP;
+						nic->flags ^= NICSPEC_F_NOARP;
+					} else return CMD_WRONG_TYPE_OF_ARGS;
+				} else if(!strcmp(token, "promisc")) {
+					if(!strcmp(value, "on")) nic->flags |= NICSPEC_F_PROMISC;
+					else if(!strcmp(value, "off")) {
+						nic->flags |= NICSPEC_F_PROMISC;
+						nic->flags ^= NICSPEC_F_PROMISC;
+					} else return CMD_WRONG_TYPE_OF_ARGS;
+				} else if(!strcmp(token, "broadcast")) {
+					if(!strcmp(value, "on")) nic->flags |= NICSPEC_F_BROADCAST;
+					else if(!strcmp(value, "off")) {
+						nic->flags |= NICSPEC_F_BROADCAST;
+						nic->flags ^= NICSPEC_F_BROADCAST;
+					} else return CMD_WRONG_TYPE_OF_ARGS;
+				} else if(!strcmp(token, "multicast")) {
+					if(!strcmp(value, "on")) nic->flags |= NICSPEC_F_MULTICAST;
+					else if(!strcmp(value, "off")) {
+						nic->flags |= NICSPEC_F_MULTICAST;
+						nic->flags ^= NICSPEC_F_MULTICAST;
+					} else return CMD_WRONG_TYPE_OF_ARGS;
+				} else if(!strcmp(token, "multiqueue")) {
+					if(!strcmp(value, "on")) nic->flags |= NICSPEC_F_MULTIQUEUE;
+					else if(!strcmp(value, "off")) {
+						nic->flags |= NICSPEC_F_MULTIQUEUE;
+						nic->flags ^= NICSPEC_F_MULTIQUEUE;
+					} else return CMD_WRONG_TYPE_OF_ARGS;
 				} else if(!strcmp(token, "pool")) {
 					if(!is_uint32(value)) return CMD_WRONG_TYPE_OF_ARGS;
 					nic->pool_size = parse_uint32(value);
@@ -1377,7 +1473,7 @@ static int cmd_create(int argc, char** argv, void(*callback)(char* result, int e
 		print_vm_error("");
 		return CMD_ERROR;
 	} else
-		print_vm_spec(&vm);
+		print_vmspec(&vm);
 
 	free(vm.argv);
 	return CMD_SUCCESS;
@@ -1524,16 +1620,14 @@ static int cmd_status_get(int argc, char** argv, void(*callback)(char* result, i
 
 	uint32_t vmid = parse_uint32(argv[1]);
 
-	VMSpec vm_spec = {0};
-	NICSpec nics[VM_MAX_NIC_COUNT] = {0};
-	vm_spec.nics = nics;
-	vm_spec.id = vmid;
+	VMSpec vmspec = {};
+	vmspec.id = vmid;
 
-	if(!vm_get_spec(&vm_spec)) {
+	if(!vm_get_spec(&vmspec)) {
 		print_vm_error("");
 		return CMD_ERROR;
 	}
-	print_vm_spec(&vm_spec);
+	print_vmspec(&vmspec);
 
 	VMStatus status = vm_status_get(vmid);
 	printf("Status: ");
@@ -1558,35 +1652,6 @@ static int cmd_stdio(int argc, char** argv, void(*callback)(char* result, int ex
 	}
 
 	return CMD_SUCCESS;
-}
-
-static void print_byte_size(uint64_t byte_size) {
-	uint64_t size = 1;
-	for(int i = 0; i < 5; i++) {
-		if((byte_size / size) < 1000) {
-			printf("(%.1f ", (float)byte_size / size);
-			switch(i) {
-				case 0:
-					printf("B)");
-					break;
-				case 1:
-					printf("KB)");
-					break;
-				case 2:
-					printf("MB)");
-					break;
-				case 3:
-					printf("GB)");
-					break;
-				case 4:
-					printf("TB)");
-					break;
-			}
-			return;
-		}
-
-		size *= 1000;
-	}
 }
 
 static void print_interface(VNIC* vnic) {
@@ -1624,7 +1689,7 @@ static void print_interface(VNIC* vnic) {
 		}
 
 // 		if(interface_index == 0)
-// 			print_nic_spec_metadata(vnic);
+// 			print_nicspec_metadata(vnic);
 		printf("\n");
 	}
 }
@@ -1635,17 +1700,15 @@ static int cmd_vnic(int argc, char** argv, void(*callback)(char* result, int exi
 
 	bool is_empty = true;
 	for(int i = 0 ; i < size; i++) {
-		VMSpec vm_spec = {0};
-		NICSpec nics[VM_MAX_NIC_COUNT] = {0};
-		vm_spec.nics = nics;
-		vm_spec.id = ids[i];
+		VMSpec vmspec = {};
+		vmspec.id = ids[i];
 
-		if(!vm_get_spec(&vm_spec)) continue;
+		if(!vm_get_spec(&vmspec)) continue;
 
-		for(int i = 0; i < vm_spec.nic_count; i++) {
-			NICSpec* nic_spec = &nics[i];
+		for(int i = 0; i < vmspec.nic_count; i++) {
+			NICSpec* nicspec = &vmspec.nics[i];
 
-			print_nic_spec(nic_spec, NULL);
+			print_nicspec(nicspec, NULL);
 			is_empty = false;
 		}
 		printf("\n");
@@ -1734,19 +1797,17 @@ static int cmd_interface(int argc, char** argv, void(*callback)(char* result, in
 		int size = vm_list(ids, 16);
 
 		for(int i = 0 ; i < size; i++) {
-			VMSpec vm_spec = {0};
-			NICSpec nics[VM_MAX_NIC_COUNT] = {0};
-			vm_spec.nics = nics;
-			vm_spec.id = ids[i];
+			VMSpec vmspec = {};
+			vmspec.id = ids[i];
 
-			if(!vm_get_spec(&vm_spec))
+			if(!vm_get_spec(&vmspec))
 				continue;
 
-			for(int i = 0; i < vm_spec.nic_count; i++) {
-// 				NICSpec* nic_spec = &nics[i];
+			for(int i = 0; i < vmspec.nic_count; i++) {
+// 				NICSpec* nicspec = &nics[i];
 // 
-// 				print_nic_spec(nic_spec);
-// 				print_nic_spec_metadata(nic_spec);
+// 				print_nicspec(nicspec);
+// 				print_nicspec_metadata(nicspec);
 			}
 			printf("\n");
 		}

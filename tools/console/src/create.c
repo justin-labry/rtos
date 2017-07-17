@@ -38,9 +38,6 @@ static int vm_create(int argc, char* argv[]) {
 	vm.memory_size = 0x1000000;	// 16MB
 	vm.storage_size = 0x1000000;	// 16MB
 
-	NICSpec nics[VMSPEC_MAX_NIC_COUNT] = {};
-	vm.nics = nics;
-
 	// Main options
 	static struct option options[] = {
 		{ "core", required_argument, 0, 'c' },
@@ -91,6 +88,8 @@ static int vm_create(int argc, char* argv[]) {
 				NICSpec* nic = &vm.nics[vm.nic_count++];
 				nic->mac = 0;
 				nic->parent[0] = '\0';
+				nic->budget = NICSPEC_DEFAULT_BUDGET_SIZE;
+				nic->flags = NICSPEC_DEFAULT_FLAGS;
 				nic->rx_buffer_size = 1024;
 				nic->tx_buffer_size = 1024;
 				nic->rx_bandwidth = 1000000000; /* 1 GB */

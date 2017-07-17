@@ -27,6 +27,7 @@ typedef enum {
 	VNIC_TX_BANDWIDTH,		///< Output bandwidth in bps
 	VNIC_PADDING_HEAD,		///< Minimum padding head of packet payload buffer
 	VNIC_PADDING_TAIL,		///< Minimum padding tail of packet payload buffer
+	VNIC_FLAGS,				///< FLAGS
 	VNIC__MAND_END,
 
 	VNIC_RX_QUEUE_SIZE,		///< Number of input buffer size, the packet count
@@ -77,6 +78,7 @@ typedef struct _VNIC {
 	uint16_t	vlan_proto; 		///< VLAN Protocol
 	uint16_t	vlan_tci;   		///< VLAN TCI
 	uint16_t	budget;			///< Polling limit
+	uint64_t	flags;				///< Flags
 
 	// Buffers
 	NICQueue	rx;			///< Rx queue

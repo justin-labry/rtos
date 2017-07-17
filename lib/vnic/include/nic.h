@@ -15,6 +15,13 @@
 // ROUNDUP(0, 8) -> 0 : ROUNDUP(3, 8) -> 8 : ROUNDUP(8,8) -> 8
 #define ROUNDUP(x, y)	((((x) + (y) - 1) / (y)) * (y))
 
+#define NIC_F_INHERITMAC		((uint64_t)1 << 1)
+#define NIC_F_NOARP				((uint64_t)1 << 2)
+#define NIC_F_PROMISC			((uint64_t)1 << 3)
+#define NIC_F_BROADCAST			((uint64_t)1 << 4)
+#define NIC_F_MULTICAST			((uint64_t)1 << 5)
+#define NIC_F_MULTIQUEUE		((uint64_t)1 << 6)
+
 #define NIC_MAX_COUNT		64
 #define NIC_MAX_LINKS		8
 #define NIC_CHUNK_SIZE		64
@@ -71,6 +78,7 @@ typedef struct _NIC {
 	uint64_t	mac;			///< MAC Address
 	uint16_t	vlan_proto; 		///< VLAN Protocol
 	uint16_t	vlan_tci;   		///< VLAN TCI
+	uint64_t	flags;			///< Flags
 
 	uint64_t	rx_bandwidth;		///< Rx bandwith limit (bps)
 	uint64_t	tx_bandwidth;		///< Tx bandwith limit (bps)
