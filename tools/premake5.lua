@@ -6,8 +6,6 @@ project 'tools'
     location    '.'
 
     buildcommands {
-        'test -f grub/Makefile || { cd grub; ./autogen.sh; ./configure; }',
-        'make -C grub',
         'make -C console',
         'make -C pn',
         'make -C pnkc',
@@ -15,7 +13,6 @@ project 'tools'
     }
 
     cleancommands {
-        'make clean -C grub',
         'make clean -C console',
         'make clean -C pn',
         'make clean -C pnkc',

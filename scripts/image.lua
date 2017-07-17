@@ -195,7 +195,7 @@ local function buildSystemImage(loader, kernel, ramdisk)
 		return os.execute(command)
     end
 
-    local grubImageMaker = 'tools/grub/grub-mkimage'
+    local grubImageMaker = 'bin/grub-mkimage' --'tools/grub/grub-mkimage'
     if io.open(grubImageMaker, "r") == nil then
         print('\tFailed to find grub utility : ' .. grubImageMaker)
         print('\t\tYou have to compile grub submodule first. See doc/setup.md')
