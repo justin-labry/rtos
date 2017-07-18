@@ -426,16 +426,10 @@ static void stdio_dump(int coreno, int fd, char* buffer, volatile size_t* head, 
 	header[8] += coreno % 10;
 
 	printf("\n%s ", header);
-	int length = *tail - *head;
-	for(int i = 0; i < length; i++) {
-		if(buffer[i] == '\0') {
-			if(i != length - 1)
-				printf("%s ", header);
-		}
-		putchar(buffer[i]);
-	}
 
-	*head = *tail;
+	char data[4096];
+	ssize_t len = size = ring_read(buffer, head, *tail, size, data, 4096);
+	for(int i = 0; i < len; i++) putchar(data[i]);
 }
 
 static bool vm_loop(void* context) {
