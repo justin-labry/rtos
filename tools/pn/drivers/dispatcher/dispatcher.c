@@ -205,7 +205,7 @@ static inline struct task_struct* manager_task(pid_t pid)
 	return pid_task(find_vpid(pid), PIDTYPE_PID);
 }
 
-rx_handler_result_t dispatcher_handle_frame(struct sk_buff** pskb)
+static rx_handler_result_t dispatcher_handle_frame(struct sk_buff** pskb)
 {
 	struct sk_buff *skb = *pskb;
 
@@ -370,12 +370,11 @@ static long dispatcher_ioctl(struct file *f, unsigned int ioctl,
 		unsigned long arg)
 {
 	void __user *argp = (void __user *)arg;
-
-	struct dispatcher_work *work;
-	struct net_device *dev;
-	NICDevice* _nic_device;
-	NICDevice* nic_device;
-	VNIC _vnic;
+	struct dispatcher_work *work = NULL;
+	struct net_device *dev = NULL;
+	NICDevice _nic_device = {};
+	NICDevice* nic_device = NULL;
+	VNIC _vnic = {};
 	VNIC* vnic = NULL;
 
 	if(!argp)
@@ -385,17 +384,27 @@ static long dispatcher_ioctl(struct file *f, unsigned int ioctl,
 	switch (ioctl) {
 		case DISPATCHER_CREATE_NICDEV:
 			printk("Register NIC on dispatcher device %p\n", argp);
-			_nic_device = (NICDevice *)argp;
-			dev = __dev_get_by_name(&init_net, _nic_device->name);
+			if(copy_from_user(&_nic_device, argp, sizeof(NICDevice))) {
+				printk("Failed to copy NICDevice object from user\n");
+				return -EFAULT;
+			}
+
+			dev = __dev_get_by_name(&init_net, _nic_device.name);
 			if (!dev) {
-				printk("Failed to find net_device for %s\n", _nic_device->name);
+				printk("Failed to find net_device for %s\n", _nic_device.name);
 				return -EINVAL;
 			}
-			nic_device = kzalloc(sizeof(NICDevice), GFP_KERNEL);
-			memset(nic_device, 0, sizeof(NICDevice));
-			strncpy(nic_device->name, _nic_device->name, MAX_NIC_NAME_LEN);
+
+			nic_device = kmalloc(sizeof(NICDevice), GFP_KERNEL);
+			if (!nic_device) {
+				printk("Failed to alloc new NICDevice\n");
+				return -ENOMEM;
+			}
+			memcpy(nic_device, &_nic_device, sizeof(NICDevice));
+
 			if(nicdev_register(nic_device) < 0) {
 				printk("Failed to register NIC device\n");
+				kfree(nic_device);
 				return -EINVAL;
 			}
 
@@ -403,6 +412,7 @@ static long dispatcher_ioctl(struct file *f, unsigned int ioctl,
 			if (!work) {
 				nicdev_unregister(nic_device->name);
 				printk("Failed to alloc work\n");
+				kfree(nic_device);
 				return -ENOMEM;
 			}
 
@@ -413,22 +423,26 @@ static long dispatcher_ioctl(struct file *f, unsigned int ioctl,
 		case DISPATCHER_DESTROY_NICDEV:
 			//name
 			printk("Unregister NIC on dispatcher device\n");
-			nic_device = (NICDevice *)argp;
-			dev = __dev_get_by_name(&init_net, nic_device->name);
+			if(copy_from_user(&_nic_device, argp, sizeof(NICDevice))) {
+				printk("Failed to copy NICDevice object from user\n");
+				return -EFAULT;
+			}
+
+			dev = __dev_get_by_name(&init_net, _nic_device.name);
 			if(!dev) {
-				printk("Failed to find net_device for %s\n", nic_device->name);
+				printk("Failed to find net_device for %s\n", _nic_device.name);
 				return -EINVAL;
 			}
 
 			work = dispatcher_work_by_netdev(dev);
 			if (!work) {
-				printk("Failed to find work associated with %s\n", nic_device->name);
+				printk("Failed to find work associated with %s\n", _nic_device.name);
 				return -ENOMEM;
 			}
 
 			dispatcher_work_dequeue(work);
 
-			nicdev_unregister(nic_device->name);
+			nicdev_unregister(_nic_device.name);
 
 			kfree(work->data);
 			kfree(work);
