@@ -46,6 +46,7 @@ typedef enum _VMError {
 	EADDVM,
 	ETHREADID,
 	EALIGN,
+	ESTORAGE,
 } VMError;
 
 /**

@@ -915,6 +915,10 @@ bool vm_status_set(uint32_t vmid, int status, VM_STATUS_CALLBACK callback, void*
 	uint64_t event_type = 0;
 	switch(status) {
 		case VM_STATUS_START:
+			if(!vm->used_size) {
+				errno = ESTORAGE;
+				goto failure;
+			}
 			if(vm->status != VM_STATUS_STOP) {
 				errno = ESTATUS;
 				goto failure;
@@ -1199,6 +1203,9 @@ static void print_vm_error(const char* msg) {
 			break;
 		case EALIGN:
 			printf("VM Error: Size Alignment wrong");
+			break;
+		case ESTORAGE:
+			printf("VM Error: VM storage is empty");
 			break;
 	}
 
