@@ -67,7 +67,8 @@ static int vm_create(int argc, char* argv[]) {
 			case 'n' :;
 				// Suboptions for NIC
 				enum {
-					EMPTY, MAC, DEV, IBUF, OBUF, IBAND, OBAND, HPAD, TPAD, POOL, SLOWPATH,
+					EMPTY, MAC, DEV, IBUF, OBUF, IBAND, OBAND, HPAD, TPAD, POOL,
+					INHERITMAC, NOARP, PROMISC, BROADCAST, MULTICAST, MULTIQUEUE,
 				};
 
 				const char* token[] = {
@@ -81,6 +82,12 @@ static int vm_create(int argc, char* argv[]) {
 					[HPAD]	= "hpad",
 					[TPAD]	= "tpad",
 					[POOL]	= "pool",
+					[INHERITMAC] = "inheritmac",
+					[NOARP] = "noarp",
+					[PROMISC] = "promisc",
+					[BROADCAST] = "broadcast",
+					[MULTICAST] = "multicast",
+					[MULTIQUEUE] = "multiqueue",
 					NULL,
 				};
 
@@ -141,6 +148,54 @@ static int vm_create(int argc, char* argv[]) {
 						case POOL:
 							if(!is_uint32(value)) goto failure;
 							nic->pool_size = strtoul(value, NULL, 16);
+							break;
+						case INHERITMAC:
+							if(!strcmp("on", value)) {
+								nic->flags |= NICSPEC_F_INHERITMAC;
+							} else if(!strcmp("off", value)) {
+								nic->flags |= NICSPEC_F_INHERITMAC;
+								nic->flags ^= NICSPEC_F_INHERITMAC;
+							} else goto failure;
+							break;
+						case NOARP:
+							if(!strcmp("on", value)) {
+								nic->flags |= NICSPEC_F_NOARP;
+							} else if(!strcmp("off", value)) {
+								nic->flags |= NICSPEC_F_NOARP;
+								nic->flags ^= NICSPEC_F_NOARP;
+							} else goto failure;
+							break;
+						case PROMISC:
+							if(!strcmp("on", value)) {
+								nic->flags |= NICSPEC_F_PROMISC;
+							} else if(!strcmp("off", value)) {
+								nic->flags |= NICSPEC_F_PROMISC;
+								nic->flags ^= NICSPEC_F_PROMISC;
+							} else goto failure;
+							break;
+						case BROADCAST:
+							if(!strcmp("on", value)) {
+								nic->flags |= NICSPEC_F_BROADCAST;
+							} else if(!strcmp("off", value)) {
+								nic->flags |= NICSPEC_F_BROADCAST;
+								nic->flags ^= NICSPEC_F_BROADCAST;
+							} else goto failure;
+							break;
+						case MULTICAST:
+							if(!strcmp("on", value)) {
+								nic->flags |= NICSPEC_F_MULTICAST;
+							} else if(!strcmp("off", value)) {
+								nic->flags |= NICSPEC_F_MULTICAST;
+								nic->flags ^= NICSPEC_F_MULTICAST;
+							} else goto failure;
+							break;
+						case MULTIQUEUE:
+							if(!strcmp("on", value)) {
+								nic->flags |= NICSPEC_F_MULTIQUEUE;
+							} else if(!strcmp("off", value)) {
+								nic->flags |= NICSPEC_F_MULTIQUEUE;
+								nic->flags ^= NICSPEC_F_MULTIQUEUE;
+							} else goto failure;
 							break;
 						default:
 							goto failure;
