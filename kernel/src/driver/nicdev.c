@@ -224,7 +224,7 @@ int nicdev_rx0(NICDevice* nicdev, void* data, size_t size,
 
 	if(unlikely(!!rx_process)) rx_process(data, size, rx_process_context);
 
-	bool is_complete = true;
+	bool is_complete = false;
 	uint64_t dmac = endian48(eth->dmac);
 	for(int i = 0; i < nicdev->vnics_count; i++) {
 		VNIC* vnic = nicdev->vnics[i];
