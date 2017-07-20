@@ -98,7 +98,8 @@ error:
 }
 
 static void help() {
-	printf("Usage: pn [Image] [Arguments] [Start Address]\n");
+	puts("Usage: pn -i KERNEL_IMAGE_PATH -a KERNEL_ARG_PATH -s KERNEL_START_ADDR");
+	puts("       pn --image KERNEL_IMAGE_PATH --args KERNEL_ARG_PATH --startaddr KERNEL_START_ADDR");
 }
 
 long kernel_start_address;	// Kernel Start address
@@ -143,6 +144,10 @@ int param_parse(int argc, char** argv) {
 				help();
 				exit(-1);
 		}
+	}
+	if(kernel_start_address == 0 || *kernel_elf == '\0' || *kernel_args == '\0') {
+		help();
+		exit(-1);
 	}
 
 	printf("\tPacketNgin Image:\t%s\n", kernel_elf);
