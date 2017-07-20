@@ -10,8 +10,14 @@ if (( $MSR_TOOLS_EXISTS < 1 )); then
 	exit 1
 fi
 
-sudo insmod ./drivers/dispatcher.ko
+DISPATCHER_EXISTS=$(lsmod | grep dispatcher | wc -l)
+if (( $DISPATCHER_EXISTS < 1 )); then
+	sudo insmod ./drivers/dispatcher.ko
+fi
+
 sudo modprobe msr
+
 sudo ./pnd $BOOT_PARAM
+
 sudo rmmod msr
 sudo rmmod dispatcher

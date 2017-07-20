@@ -16,6 +16,8 @@
 
 static int dispatcher_fd;
 
+static void dispatcher_close_on_exit(int signo);
+
 int dispatcher_init() {
 	int fd = open("/dev/dispatcher", O_WRONLY);
 	if(fd == -1) {
@@ -27,23 +29,8 @@ int dispatcher_init() {
 	printf("\tPacketNgin manager set to kernel dispatcher\n");
 
 	// Register signal handler for graceful termination
-	void __handler(int data) {
-		int rc;
-		printf("\tPacketNgin manager terminated...\n");
-		if((rc = dispatcher_exit()) < 0)
-			printf("\tDispatcher module abnormally terminated : %d\n", rc);
-
-		signal(SIGINT, SIG_DFL);
-		signal(SIGTERM, SIG_DFL);
-		// Gracefully kill wating for ioctl
-		sleep(1);
-		kill(getpid(), SIGINT);
-	}
-
-	struct sigaction act;
-	act.sa_handler = __handler;
-	sigaction(SIGINT, &act, NULL);
-	sigaction(SIGTERM, &act, NULL);
+	signal(SIGINT, dispatcher_close_on_exit);
+	signal(SIGTERM, dispatcher_close_on_exit);
 
 	dispatcher_fd = fd;
 	return 0;
@@ -90,3 +77,14 @@ int dispatcher_get_vnic(void* vnic) {
 	return ioctl(dispatcher_fd, DISPATCHER_CREATE_VNIC, vnic);
 }
 
+static void dispatcher_close_on_exit(int signo) {
+	int rc;
+	printf("\tPacketNgin manager terminated...\n");
+	if((rc = dispatcher_exit()) < 0)
+		printf("\tDispatcher module abnormally terminated : %d\n", rc);
+
+	signal(SIGINT, SIG_DFL);
+	signal(SIGTERM, SIG_DFL);
+
+	kill(0, signo);
+}
