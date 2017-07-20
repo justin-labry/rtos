@@ -35,7 +35,7 @@ void close_mem(int fd) {
 }	
 
 struct boot_params* map_boot_param(int mem_fd) {
-	if(!mem_fd) {
+	if(mem_fd == -1) {
 		printf("Error: Memory not opend\n");
 		return NULL;
 	}

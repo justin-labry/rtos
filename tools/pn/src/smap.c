@@ -7,7 +7,7 @@
 
 int smap_init() {
 	int mem_fd = open_mem(O_RDWR);
-	if(!mem_fd)
+	if(mem_fd == -1)
 		return -1;
 
 	struct boot_params* boot_params = map_boot_param(mem_fd);
