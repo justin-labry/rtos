@@ -137,10 +137,12 @@ int slowpath_destroy(VNIC* vnic) {
 	IOMultiplexer* io_mux = io_mux_remove((uint64_t)vnic);
 
 	//Close Tap interface
-	ioctl(io_mux->fd, TUNSETPERSIST, 0);
-	close(io_mux->fd);
+	if(io_mux) {
+		ioctl(io_mux->fd, TUNSETPERSIST, 0);
+		close(io_mux->fd);
 
-	free(io_mux);
+		free(io_mux);
+	}
 
 	return 0;
 }

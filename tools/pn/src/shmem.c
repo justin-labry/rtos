@@ -30,7 +30,7 @@ int malloc_init() {
 	if(ftruncate(fd, PNDSHM_SIZE) < 0) return -2;
 
 	pnd_share_data = mmap((void*)PNDSHM_OFFSET, PNDSHM_SIZE,
-			PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+			PROT_READ | PROT_WRITE, MAP_SHARED | MAP_FIXED, fd, 0);
 
 	if(pnd_share_data == MAP_FAILED) return -3;
 
