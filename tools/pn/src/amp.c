@@ -23,6 +23,7 @@ static void wakeup_ap(long kernel_start_address) {
 		if(apicid < 0) {
 			continue;
 		}
+		sleep(1);
 		shared->mp_processors[apicid] = cpu;
 		processor_count++;
 		printf("\t\tAPIC ID: %d CPU ID: %d\n", apicid, cpu);
