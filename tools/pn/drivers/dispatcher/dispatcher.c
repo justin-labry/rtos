@@ -221,7 +221,11 @@ static rx_handler_result_t dispatcher_handle_frame(struct sk_buff** pskb)
 	if (!skb)
 		return RX_HANDLER_CONSUMED;
 
-	skb_linearize(skb);
+	if(skb_linearize(skb)) {
+		kfree_skb(skb);
+		return RX_HANDLER_CONSUMED;
+	}
+
 	struct ethhdr *eth = (struct ethhdr*)skb_mac_header(skb);
 	NICDevice* nic_device = rcu_dereference(skb->dev->rx_handler_data);
 	BUG_ON(!nic_device);
@@ -266,13 +270,14 @@ static struct sk_buff* convert_to_skb(struct net_device* dev, Packet* packet)
 	unsigned int len = packet->end - packet->start;
 
 	struct sk_buff* skb = netdev_alloc_skb_ip_align(dev, len);
-	if (unlikely(!skb))
+	if (unlikely(!skb)) {
+		nic_free(packet);
 		return NULL;
+	}
 
 	skb_put(skb, len);
 	memcpy(skb->data, buf, len);
 
-	//TODO fix
 	nic_free(packet);
 	return skb;
 }
@@ -300,6 +305,7 @@ static bool packet_process(Packet* packet, void* context)
 			!vlan_hw_offload_capable(features, skb->vlan_proto)) {
 		skb = __vlan_hwaccel_push_inside(skb);
 		if(unlikely(!skb)) {
+			dev_kfree_skb_irq(skb);
 			return false;
 		}
 	}
