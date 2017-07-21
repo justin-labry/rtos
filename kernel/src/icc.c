@@ -26,17 +26,17 @@ static bool icc_event(void* context) {
 	uint8_t apic_id = mp_apic_id();
 	Shared* shared = (Shared*)SHARED_ADDR;
 	FIFO* icc_queue = shared->icc_queues[apic_id].icc_queue;
+	if(!icc_queue) return true;
 
-	if(fifo_empty(icc_queue))
-		return true;
+	if(fifo_empty(icc_queue)) return true;
 
 	lock_lock(&shared->icc_queues[apic_id].icc_queue_lock);
 	ICC_Message* icc_msg = fifo_pop(icc_queue);
 	lock_unlock(&shared->icc_queues[apic_id].icc_queue_lock);
 
-	if(!icc_msg)
-		return true;
+	if(!icc_msg) return true;
 
+	//printf("icc_event() %d %d\n", icc_msg->type, task_id());
 	if(icc_msg->type >= ICC_EVENTS_COUNT) {
 		icc_free(icc_msg);
 		return true;
@@ -60,22 +60,11 @@ static void icc(uint64_t vector, uint64_t err) {
 
 	apic_eoi();
 
-	if(icc_msg == NULL)
-		return;
+	if(icc_msg == NULL) return;
+	//printf("icc() %d %d\n", icc_msg->type, task_id());
 
-	icc_msg->result = 0;
-	if(task_id() != 0) {
-		if(icc_msg->type == ICC_TYPE_RESUME) {
-			icc_msg->result = -1000;
-			icc_event(NULL);
-		} else {
-			icc_event(NULL);
-		}
-	} else {
-		if(icc_msg->type == ICC_TYPE_STOP) {
-			icc_msg->result = -1000;
-			icc_event(NULL);
-		}
+	if(task_id()) { //user context
+		icc_event(NULL);
 	}
 }
 

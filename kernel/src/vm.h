@@ -32,6 +32,15 @@ typedef struct {
 #define VM_MAX_NIC_COUNT	NIC_MAX_COUNT
 #define VNIC_MAX_POOL_SIZE	0x8000000		//128Mb
 
+typedef enum {
+	CORE_STATUS_INVALID,
+	CORE_STATUS_AVAILABLE,
+	CORE_STATUS_READY,
+	CORE_STATUS_PAUSE,
+	CORE_STATUS_STOP,
+	CORE_STATUS_START,
+	CORE_STATUS_ERROR,
+} CoreStatus;
 
 typedef enum _VMError {
 	EVMID = 1,
@@ -136,7 +145,7 @@ typedef void(*VM_STATUS_CALLBACK)(bool, void*);
  * @param callback status callback
  * @param context callback context
  */
-bool vm_status_set(uint32_t vmid, int status, VM_STATUS_CALLBACK callback, void* context);
+bool vm_status_set(uint32_t vmid, VMStatus status, VM_STATUS_CALLBACK callback, void* context);
 
 /**
  * Get the status of the VM

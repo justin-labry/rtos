@@ -245,26 +245,30 @@ void task_resource(uint32_t id, uint8_t type, void* data) {
 }
 
 void task_destroy(uint32_t id) {
+	//printf("task destroy %p\n", tasks[id].mmap);
 	// Restore memory map
-	while(list_size(tasks[id].mmap) > 0) {
-		uint64_t vaddr = (uint64_t)list_remove_first(tasks[id].mmap);
-		uint64_t idx = vaddr >> 21;
+	if(tasks[id].mmap) {
+		//printf("task destroy %d\n", list_size(tasks[id].mmap));
+		while(list_size(tasks[id].mmap) > 0) {
+			uint64_t vaddr = (uint64_t)list_remove_first(tasks[id].mmap);
+			uint64_t idx = vaddr >> 21;
 
-		bfree((void*)((uint64_t)PAGE_L4U[idx].base << 21));
+			//bfree((void*)((uint64_t)PAGE_L4U[idx].base << 21));
 
-		PAGE_L4U[idx].base = idx + (PHYSICAL_OFFSET >> 21);
-		PAGE_L4U[idx].us = 0;
-		PAGE_L4U[idx].rw = 1;
-		PAGE_L4U[idx].exb = 1;
+			PAGE_L4U[idx].base = idx + (PHYSICAL_OFFSET >> 21);
+			PAGE_L4U[idx].us = 0;
+			PAGE_L4U[idx].rw = 1;
+			PAGE_L4U[idx].exb = 1;
 
-		printf("Task: virtual memory map: %dMB -> %dMB %c%c%c\n", idx * 2, PAGE_L4U[idx].base * 2,
-			PAGE_L4U[idx].us ? 'r' : '-',
-			PAGE_L4U[idx].rw ? 'w' : '-',
-			PAGE_L4U[idx].exb ? '-' : 'x');
+// 			printf("Task: virtual memory map: %dMB -> %dMB %c%c%c\n", idx * 2, PAGE_L4U[idx].base * 2,
+// 					PAGE_L4U[idx].us ? 'r' : '-',
+// 					PAGE_L4U[idx].rw ? 'w' : '-',
+// 					PAGE_L4U[idx].exb ? '-' : 'x');
+		}
+
+		list_destroy(tasks[id].mmap);
+		tasks[id].mmap = NULL;
 	}
-
-	list_destroy(tasks[id].mmap);
-	tasks[id].mmap = NULL;
 
 	// Restore resource
 /*
@@ -296,19 +300,22 @@ void task_destroy(uint32_t id) {
  *        }
  *
  */
-	list_destroy(tasks[id].resources);
-	tasks[id].resources = NULL;
+	if(tasks[id].resources) {
+		list_destroy(tasks[id].resources);
+		tasks[id].resources = NULL;
+	}
 
 	refresh_cr3();
 
 	if(id == last_fpu_task)
 		last_fpu_task = (uint32_t)-1;
 
-	if(id == current_task) {
-		current_task = (uint32_t)-1;
-
-		task_switch(0);
-	}
+// 	printf("%d %d\n", id, current_task);
+// 	if(id == current_task) {
+// 		current_task = (uint32_t)-1;
+// 
+// 		task_switch(0);
+// 	}
 }
 
 inline uint32_t task_id() {
@@ -316,6 +323,7 @@ inline uint32_t task_id() {
 }
 
 void task_switch(uint32_t id) {
+	//printf("task_switch\n");
 	if(id == (uint32_t)-1) {
 		id = 0;
 	}
@@ -333,6 +341,7 @@ void task_switch(uint32_t id) {
  *        task_dump(current_task);
  *
  */
+	//printf("current: %d old: %d\n", current_task, old_task);
 	if(current_task == last_fpu_task) {
 		ts_clear();
 	} else {

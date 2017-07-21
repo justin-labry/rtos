@@ -109,6 +109,7 @@ _context_switch:
 	; refreshing cr3 is already done by loader
 	mov	rax, cr3
 	mov	cr3, rax
+	sti
 	
 	iretq
 
