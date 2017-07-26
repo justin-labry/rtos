@@ -26,26 +26,35 @@ typedef enum {
 	POOLTYPE_COUNT,
 } PoolType;
 
-typedef struct _DataOps {
-	uintptr_t	(*hash)(void*);
-	bool		(*equals)(void*, void*);
+#define DATAOPS_PROPS	\
+	uintptr_t (*hash)(void*);	\
+	bool	(*equals)(void*, void*);	\
 	int		(*compare)(void*, void*);
+
+typedef struct _DataOps {
+	DATAOPS_PROPS
 } DataOps;
 
-typedef struct _PoolOps {
-	void*		(*malloc)(size_t);
-	void		(*free)(void*);
-	void*		(*calloc)(size_t, size_t);
+#define POOLOPS_PROPS	\
+	void*		(*malloc)(size_t);	\
+	void		(*free)(void*);	\
+	void*		(*calloc)(size_t, size_t);	\
 	void*		(*realloc)(void*, size_t);
+
+typedef struct _PoolOps {
+	POOLOPS_PROPS
 } PoolOps;
 
-typedef struct _Base {
-	DataType type;
-	DataOps;
+#define BASE_PROPS	\
+	DataType type;	\
+	DATAOPS_PROPS	\
+	PoolType pool;	\
+	POOLOPS_PROPS
 
-	PoolType pool;
-	PoolOps;
+typedef struct _Base {
+	BASE_PROPS
 } Base;
+
 
 int register_type(DataType type, uint64_t (*hash)(void*),
 		bool (*equals)(void*, void*), int (*compare)(void*, void*));

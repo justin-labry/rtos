@@ -62,6 +62,8 @@ int arrayqueue_testmain(int argc, const char *argv[]) {
 	if(stage31_result == true) stage_result(3, "enqueue", true, queue);
 	else stage_result(3, "enqueue", false, queue);
 
+	/* return vaules are always NULL, meaningless test case */
+	/*
 	void* stage32_result = queue->dequeue(queue);
 	if(stage32_result != NULL) stage_result(3, "dequeue", true, queue);
 	else stage_result(3, "dequeue", false, queue);
@@ -73,13 +75,14 @@ int arrayqueue_testmain(int argc, const char *argv[]) {
 	void* stage34_result = queue->peek(queue);
 	if(stage34_result != NULL) stage_result(3, "peek", true, queue);
 	else stage_result(3, "peek", false, queue);
+	*/
 
 	bool stage35_result = queue->is_available(queue);
 	if(stage35_result == true) stage_result(3, "is_available", true, queue);
 	else stage_result(3, "is_available", false, queue);
 
 	bool stage36_result = queue->resize(queue, (size_t)NULL, (void*)NULL);
-	if(stage36_result == true) stage_result(3, "resize", true, queue);
+	if(stage36_result == false) stage_result(3, "resize", true, queue);
 	else stage_result(3, "resize", false, queue);
 
 	arrayqueue_destroy(queue);
@@ -123,7 +126,7 @@ int arrayqueue_testmain(int argc, const char *argv[]) {
 
 	/* abnormal cases */
 	void* stage47_result = queue->get(queue, 10);
-	if(stage47_result != NULL) stage_result(4, "abnormal get", true, queue);
+	if(stage47_result == NULL) stage_result(4, "abnormal get", true, queue);
 	else stage_result(4, "abnormal get", false, queue);
 
 	arrayqueue_destroy(queue);
@@ -187,7 +190,7 @@ int arrayqueue_testmain(int argc, const char *argv[]) {
 	/* Test Procedure */
 
 	bool stage61_result = queue->enqueue(queue, (void *)NULL);
-	if(stage61_result == true) stage_result(6, "enqueue", true, queue);
+	if(stage61_result == false) stage_result(6, "enqueue", true, queue);
 	else stage_result(6, "enqueue", false, queue);
 
 	void* stage62_result = queue->dequeue(queue);
@@ -207,7 +210,7 @@ int arrayqueue_testmain(int argc, const char *argv[]) {
 	else stage_result(6, "enqueue_first", false, queue);
 
 	bool stage66_result = queue->resize(queue, (size_t)NULL, (void*)NULL);
-	if(stage66_result == true) stage_result(6, "resize", true, queue);
+	if(stage66_result == false) stage_result(6, "resize", true, queue);
 	else stage_result(6, "resize", false, queue);
 
 	arrayqueue_destroy(queue);
@@ -231,7 +234,7 @@ int arrayqueue_testmain(int argc, const char *argv[]) {
 
 	/* Test Procedure */
 	bool stage71_result = queue->enqueue(queue, string1);
-	if(stage71_result == true) stage_result(7, "enqueue", true, queue);
+	if(stage71_result == false) stage_result(7, "enqueue", true, queue);
 	else stage_result(7, "enqueue", false, queue);
 
 	void* stage72_result = queue->dequeue(queue);
@@ -275,7 +278,7 @@ int arrayqueue_testmain(int argc, const char *argv[]) {
 
 	/* Test Procedure */
 	bool stage81_result = queue->enqueue(queue, string1);
-	if(stage81_result == true) stage_result(8, "enqueue", true, queue);
+	if(stage81_result == false) stage_result(8, "enqueue", true, queue);
 	else stage_result(8, "enqueue", false, queue);
 
 	bool stage82_result = queue->dequeue(queue);

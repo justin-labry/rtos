@@ -5,16 +5,22 @@
 
 typedef struct _Queue Queue;
 
-typedef struct _QueOps {
-	bool	(*enqueue)(void* this, void* element);
-	void*	(*dequeue)(void* this);
-	void*	(*get)(void* this, int index);
+#define QUEUEOPS_PROPS	\
+	bool	(*enqueue)(void* this, void* element);	\
+	void*	(*dequeue)(void* this);	\
+	void*	(*get)(void* this, int index);	\
 	void*	(*peek)(void* this);
+
+typedef struct _QueOps {
+	QUEUEOPS_PROPS
 } QueueOps;
 
+#define QUEUE_PROPS	\
+	COLLECTION_PROPS	\
+	QUEUEOPS_PROPS
+
 typedef struct _Queue {
-	Collection;
-	QueueOps;
+	QUEUE_PROPS
 } Queue;
 
 Queue* queue_create(DataType type, PoolType pool, size_t size);

@@ -11,14 +11,17 @@ typedef struct _MapEntry {
 
 typedef struct _Map Map;
 
-typedef struct _MapOps {
-	bool	(*is_empty)(void* this);
-	void*	(*get)(void* this, void* key);
-	bool	(*put)(void* this, void* key, void* value);
-	bool	(*update)(void* this, void* key, void* value);
-	void*	(*remove)(void* this, void* key);
-	bool	(*contains_key)(void* this, void* key);
+#define MAPOPS_PROPS	\
+	bool	(*is_empty)(void* this);	\
+	void*	(*get)(void* this, void* key);	\
+	bool	(*put)(void* this, void* key, void* value);	\
+	bool	(*update)(void* this, void* key, void* value);	\
+	void*	(*remove)(void* this, void* key);	\
+	bool	(*contains_key)(void* this, void* key);	\
 	bool	(*contains_value)(void* this, void* value);
+
+typedef struct _MapOps {
+	MAPOPS_PROPS
 } MapOps;
 
 typedef struct _MapIterContext {
@@ -29,7 +32,7 @@ typedef struct _MapIterContext {
 } MapIterContext;
 
 typedef struct _EntrySet {
-	Set;
+	SET_PROPS
 	void*		map;
 	MapIterContext*	context;
 } EntrySet;
@@ -37,14 +40,16 @@ typedef struct _EntrySet {
 typedef struct _EntrySet KeySet;
 typedef struct _EntrySet ValueSet;
 
-typedef struct _Map {
-	Base;
-	MapOps;
-
-	EntrySet*	entry_set;
-	KeySet*		key_set;
-	ValueSet*	value_set;
+#define MAP_PROPS	\
+	BASE_PROPS	\
+	MAPOPS_PROPS	\
+	EntrySet*	entry_set;	\
+	KeySet*		key_set;	\
+	ValueSet*	value_set;	\
 	size_t		size;
+
+typedef struct _Map {
+	MAP_PROPS
 } Map;
 
 Map* map_create(DataType type, PoolType pool, size_t size);

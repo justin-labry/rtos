@@ -16,9 +16,6 @@ static int uint64_compare(void* key1, void* key2) {
 }
 
 static uintptr_t string_hash(void* key) {
-	if(!key)
-		return 0;
-
 	char* c = key;
 	uint32_t len = 0;
 	uint32_t sum = 0;
@@ -31,16 +28,10 @@ static uintptr_t string_hash(void* key) {
 }
 
 static bool string_equals(void* key1, void* key2) {
-	if(!key1 || !key2)
-		return false;
-
 	return strcmp(key1, key2) == 0;
 }
 
 static int string_compare(void* key1, void* key2) {
-	if(!key1 || !key2)
-		return false;
-
 	return strcmp(key1, key2);
 }
 

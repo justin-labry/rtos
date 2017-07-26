@@ -4,8 +4,11 @@
 #include <util/set.h>
 #include <util/hashmap.h>
 
-typedef struct _HashSetOps {
+#define HASHSETOPS_PROPS	\
 	void*	(*get)(void* this, void* key);
+
+typedef struct _HashSetOps {
+	HASHSETOPS_PROPS
 } HashSetOps;
 
 typedef struct _HashSetIterContext {
@@ -14,8 +17,8 @@ typedef struct _HashSetIterContext {
 } HashSetIterContext;
 
 typedef struct _HashSet {
-	Set;
-	HashSetOps;
+	SET_PROPS
+	HASHSETOPS_PROPS
 
 	HashMap*		map;
 	HashSetIterContext*	context;

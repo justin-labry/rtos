@@ -13,19 +13,24 @@ typedef struct _Iterator {
 
 typedef struct _Collection Collection;
 
-typedef struct _CollectionOps {
-	bool		(*is_empty)(void* this);
-	bool		(*contains)(void* this, void* element);
-	bool		(*add)(void* this, void* element);
+#define COLLECTIONOPS_PROPS	\
+	bool		(*is_empty)(void* this);	\
+	bool		(*contains)(void* this, void* element);	\
+	bool		(*add)(void* this, void* element);	\
 	bool		(*remove)(void* this, void* element);
+
+typedef struct _CollectionOps {
+	COLLECTIONOPS_PROPS
 } CollectionOps;
 
-typedef struct _Collection {
-	Base;
-	CollectionOps;
-
-	size_t		size;
+#define COLLECTION_PROPS	\
+	BASE_PROPS	\
+	COLLECTIONOPS_PROPS	\
+	size_t		size;	\
 	Iterator*	iter;
+
+typedef struct _Collection {
+	COLLECTION_PROPS
 } Collection;
 
 Collection* collection_create(DataType type, PoolType pool, size_t size);

@@ -7,10 +7,10 @@
 typedef struct _LinkedListIterContext CacheIterContext;
 
 typedef struct _Cache {
-	Map;
+	MAP_PROPS
 
 	size_t			capacity;
-        HashMap*		map;
+	HashMap*		map;
 	LinkedList*		list;
 
 	Iterator*		iter;

@@ -8,10 +8,12 @@ typedef struct _SetEntry {
 	void* data;
 } SetEntry;
 
-typedef struct _Set {
-	Collection;
-
+#define SET_PROPS	\
+	COLLECTION_PROPS	\
 	size_t		capacity;
+
+typedef struct _Set {
+	SET_PROPS
 } Set;
 
 Set* set_create(DataType type, PoolType pool, size_t size);

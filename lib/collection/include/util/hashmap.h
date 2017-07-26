@@ -5,7 +5,7 @@
 #include <util/linkedlist.h>
 
 typedef struct _HashMap {
-        Map;
+	MAP_PROPS
 
 	LinkedList**		table;
 	size_t			capacity;

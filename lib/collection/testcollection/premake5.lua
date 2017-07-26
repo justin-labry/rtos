@@ -7,4 +7,4 @@ project 'testcollection'
 	files { "src/**.h", "src/**.c" }
     links { 'collection' }
 	postbuildcommands { "%{cfg.buildtarget.abspath}" } -- run tester
-    buildoptions { '-fms-extensions', '-std=gnu11' }
+    buildoptions { '-std=gnu11' }

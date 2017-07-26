@@ -24,9 +24,6 @@ static void _destroy(HashMap* this) {
 }
 
 static void* get(HashMap* this, void* key) {
-	if(!key)
-		return NULL;
-
 	size_t index = this->hash(key) % this->capacity;
 	LinkedList* list = this->table[index];
 	if(!list)
@@ -43,9 +40,6 @@ static void* get(HashMap* this, void* key) {
 }
 
 static bool put(HashMap* this, void* key, void* value) {
-	if(!key)
-		return false;
-
 	if(this->size + 1 > this->threshold) {
 		// Create new this
 		HashMap* map = hashmap_create(this->type, this->pool,
@@ -112,9 +106,6 @@ static bool put(HashMap* this, void* key, void* value) {
 }
 
 static bool update(HashMap* this, void* key, void* value) {
-	if(!key)
-		return false;
-
 	size_t index = this->hash(key) % this->capacity;
 	LinkedList* list = this->table[index];
 	if(!list)
@@ -133,9 +124,6 @@ static bool update(HashMap* this, void* key, void* value) {
 }
 
 static void* _remove(HashMap* this, void* key) {
-	if(!key)
-		return false;
-
 	size_t index = this->hash(key) % this->capacity;
 	LinkedList* list = this->table[index];
 	if(!list)

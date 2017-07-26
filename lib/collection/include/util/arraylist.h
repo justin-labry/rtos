@@ -5,8 +5,11 @@
 
 typedef struct _ArrayList ArrayList;
 
-typedef struct _ArrayListOps {
+#define ARRAYLISTOPS_PROPS	\
 	bool		(*is_available)(ArrayList* this);
+
+typedef struct _ArrayListOps {
+	ARRAYLISTOPS_PROPS
 } ArrayListOps;
 
 typedef struct _ArrayListIterContext {
@@ -15,8 +18,8 @@ typedef struct _ArrayListIterContext {
 } ArrayListIterContext;
 
 typedef struct _ArrayList {
-	List;
-	ArrayListOps;
+	LIST_PROPS
+	ARRAYLISTOPS_PROPS
 
 	size_t		capacity;
 	void**		array;

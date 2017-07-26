@@ -5,14 +5,17 @@
 
 typedef struct _ArrayQueue ArrayQueue;
 
-typedef struct _ArrayQueueOps {
-	bool	(*is_available)(ArrayQueue* this);
+#define ARRAYQUEUEOPS_PROPS	\
+	bool	(*is_available)(ArrayQueue* this);	\
 	bool	(*resize)(ArrayQueue* this, size_t capacity, void (*popped)(void*));
+
+typedef struct _ArrayQueueOps {
+	ARRAYQUEUEOPS_PROPS
 } ArrayQueueOps;
 
 typedef struct _ArrayQueue {
-	Queue;
-	ArrayQueueOps;
+	QUEUE_PROPS
+	ARRAYQUEUEOPS_PROPS
 
 	size_t	head;
 	size_t	tail;

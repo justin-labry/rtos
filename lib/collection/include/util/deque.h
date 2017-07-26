@@ -5,18 +5,21 @@
 
 typedef struct _Deque Deque;
 
-typedef struct _DequeOps {
-	bool	(*add_first)(void* this, void*);
-	bool	(*add_last)(void* this, void*);
-	void*	(*remove_first)(void* this);
-	void*	(*remove_last)(void* this);
-	void*	(*get_first)(void* this);
+#define DEQUEOPS_PROPS	\
+	bool	(*add_first)(void* this, void*);	\
+	bool	(*add_last)(void* this, void*);	\
+	void*	(*remove_first)(void* this);	\
+	void*	(*remove_last)(void* this);	\
+	void*	(*get_first)(void* this);	\
 	void*	(*get_last)(void* this);
+
+typedef struct _DequeOps {
+	DEQUEOPS_PROPS
 } DequeOps;
 
 typedef struct _Deque {
-	Queue;
-	DequeOps;
+	QUEUE_PROPS
+	DEQUEOPS_PROPS
 } Deque;
 
 #endif /* __UTIL_DEQUE_H__ */

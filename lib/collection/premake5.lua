@@ -9,8 +9,6 @@ project 'collection'
     build.linkingProperty()
     build.targetPath('..')
 
-    buildoptions    '-fms-extensions'
-
     postbuildcommands {
         'make -C testcollection'
     }
